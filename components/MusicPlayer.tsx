@@ -4,10 +4,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Howl } from 'howler';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Share, Repeat, Shuffle, Repeat1, ChevronUp, ChevronDown, Search, MoreVertical } from 'lucide-react';
 import { LOCAL_TRACKS, LocalTrack, MusicSource } from '../data/localTracks';
+import { DEFAULT_MUSIC_API_ID, getMusicApi, MUSIC_APIS } from '../api';
+import type { ApiSearchItem, MusicApiId } from '../api';
 
-const MUSIC_API_BASE = 'https://music-api.gdstudio.xyz/api.php';
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 60;
 const DEFAULT_SEARCH_COUNT = 8;
 const DEFAULT_COVER_SIZE = '300';
 const BITRATE_OPTIONS = [128, 192, 320, 740, 999] as const;
@@ -19,37 +18,13 @@ const AVAILABLE_SOURCES: { value: MusicSource; label: string }[] = [
   { value: 'joox', label: 'JOOX' },
 ];
 
-type SearchApiItem = {
-  id: number | string;
-  name?: string;
-  artist?: string[] | string;
-  album?: string;
-  pic_id?: string;
-  lyric_id?: string;
-  source?: string;
-};
-
-type UrlApiResponse = {
-  url?: string;
-  br?: number;
-  size?: number;
-};
-
-type PicApiResponse = {
-  url?: string;
-};
-
 type LyricLine = {
   time: number;
   text: string;
 };
 
-type LyricApiResponse = {
-  lyric?: string | null;
-  tlyric?: string | null;
-};
-
-export type Track = LocalTrack & {
+export type Track = Omit<LocalTrack, 'apiId'> & {
+  apiId: MusicApiId;
   url?: string;
   cover?: string | null;
   lyric?: string | null;
@@ -64,6 +39,7 @@ function sanitizeUrl(url: string): string {
 function createTrack(track: LocalTrack): Track {
   return {
     ...track,
+    apiId: track.apiId ?? DEFAULT_MUSIC_API_ID,
     url: undefined,
     cover: track.picId ? undefined : null,
     lyric: null,
@@ -119,7 +95,9 @@ function parseLyricLines(lyric: string | null | undefined): LyricLine[] {
 
 const DEFAULT_SOURCE: MusicSource = 'netease';
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map(createTrack);
-const INITIAL_SOURCE_TRACKS: Track[] = INITIAL_TRACKS.filter((track) => track.source === DEFAULT_SOURCE);
+const INITIAL_SOURCE_TRACKS: Track[] = INITIAL_TRACKS.filter(
+  (track) => track.apiId === DEFAULT_MUSIC_API_ID && track.source === DEFAULT_SOURCE,
+);
 
 function normalizeText(value: string | undefined | null): string {
   if (!value) return '';
@@ -138,7 +116,7 @@ function collectArtistTokens(artist: string[] | string | undefined): string[] {
     .filter(Boolean);
 }
 
-function selectBestSearchResult(results: SearchApiItem[], target: Track): SearchApiItem | null {
+function selectBestSearchResult(results: ApiSearchItem[], target: Track): ApiSearchItem | null {
   if (!results || results.length === 0) return null;
 
   const targetName = normalizeText(target.name);
@@ -189,6 +167,7 @@ const MusicPlayer = () => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [localTracks, setLocalTracks] = useState<Track[]>(() => INITIAL_TRACKS);
+  const [selectedApiId, setSelectedApiId] = useState<MusicApiId>(DEFAULT_MUSIC_API_ID);
   const [selectedSource, setSelectedSource] = useState<MusicSource>(DEFAULT_SOURCE);
   const [selectedBitrate, setSelectedBitrate] = useState<BitrateOption>(320);
   const [allTracks, setAllTracks] = useState<Track[]>(() => INITIAL_SOURCE_TRACKS);
@@ -218,7 +197,6 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
   const autoPlayRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>('order');
   const playRequestIdRef = useRef(0);
-  const requestTimestampsRef = useRef<number[]>([]);
   const searchRequestIdRef = useRef(0);
   const lyricDesktopRef = useRef<HTMLDivElement | null>(null);
   const lyricMobileRef = useRef<HTMLDivElement | null>(null);
@@ -325,26 +303,6 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     });
   }, [activeLyricKey, lyricDesktopRef, lyricMobileRef, lyricsExpanded, mobileExpanded]);
 
-  const registerRequest = useCallback(() => {
-    const now = Date.now();
-    const windowStart = now - RATE_LIMIT_WINDOW_MS;
-    requestTimestampsRef.current = requestTimestampsRef.current.filter((timestamp) => timestamp >= windowStart);
-    if (requestTimestampsRef.current.length >= RATE_LIMIT_MAX_REQUESTS) {
-      throw new Error('请求过于频繁，请稍后再试');
-    }
-    requestTimestampsRef.current.push(now);
-  }, []);
-
-  const callMusicApi = useCallback(async <T,>(params: Record<string, string>): Promise<T> => {
-    registerRequest();
-    const url = `${MUSIC_API_BASE}?${new URLSearchParams(params).toString()}`;
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error('音乐服务暂时不可用');
-    }
-    return (await response.json()) as T;
-  }, [registerRequest]);
-
   const updateTrackInStates = useCallback((updated: Track) => {
     setLocalTracks((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     setAllTracks((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
@@ -365,17 +323,17 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     let resolvedArtist = track.artist;
     let lyricText = track.lyric ?? null;
     let translationText = track.tLyric ?? null;
+    const api = getMusicApi(track.apiId);
 
     if (!trackId) {
       if (!keyword) {
         throw new Error('未配置歌曲关键词');
       }
-      const searchResults = await callMusicApi<SearchApiItem[]>({
-        types: 'search',
+      const searchResults = await api.search({
         source: track.source,
-        name: keyword,
-        count: String(DEFAULT_SEARCH_COUNT),
-        pages: '1',
+        keyword,
+        count: DEFAULT_SEARCH_COUNT,
+        page: 1,
       });
       const list = Array.isArray(searchResults) ? searchResults : [];
       const best = selectBestSearchResult(list, track);
@@ -402,13 +360,10 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
       }
     }
 
-    const bitrateParam = String(desiredBitrate);
-
-    const urlData = await callMusicApi<UrlApiResponse>({
-      types: 'url',
+    const urlData = await api.getUrl({
       source: track.source,
       id: trackId,
-      br: bitrateParam,
+      bitrate: desiredBitrate,
     });
 
     if (!urlData || !urlData.url) {
@@ -420,8 +375,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
 
     if (picId) {
       try {
-        const picData = await callMusicApi<PicApiResponse>({
-          types: 'pic',
+        const picData = await api.getPic({
           source: track.source,
           id: picId,
           size: DEFAULT_COVER_SIZE,
@@ -436,8 +390,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
 
     if (!lyricText && lyricId) {
       try {
-        const lyricData = await callMusicApi<LyricApiResponse>({
-          types: 'lyric',
+        const lyricData = await api.getLyric({
           source: track.source,
           id: lyricId,
         });
@@ -474,7 +427,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
 
     updateTrackInStates(resolvedTrack);
     return resolvedTrack;
-  }, [callMusicApi, updateTrackInStates]);
+  }, [updateTrackInStates]);
 
   const playSong = useCallback(async (index: number, autoplay = true) => {
     if (index < 0 || index >= musicList.length) return;
@@ -706,7 +659,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     }
   };
 
-  const performSearch = useCallback(async (source: MusicSource, keyword: string, page = 1) => {
+  const performSearch = useCallback(async (apiId: MusicApiId, source: MusicSource, keyword: string, page = 1) => {
     const trimmedKeyword = keyword.trim();
     if (!trimmedKeyword) return;
 
@@ -724,12 +677,11 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     setErrorMessage(null);
 
     try {
-      const searchResults = await callMusicApi<SearchApiItem[]>({
-        types: 'search',
+      const searchResults = await getMusicApi(apiId).search({
         source,
-        name: trimmedKeyword,
-        count: String(DEFAULT_SEARCH_COUNT),
-        pages: String(page),
+        keyword: trimmedKeyword,
+        count: DEFAULT_SEARCH_COUNT,
+        page,
       });
       const list = Array.isArray(searchResults) ? searchResults : [];
       const mapped: Track[] = list.map((item, index) => {
@@ -739,11 +691,12 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
         const lyricId = item.lyric_id ? String(item.lyric_id) : trackId;
         const artistText = Array.isArray(item.artist) ? item.artist.join(', ') : item.artist ?? '';
         const mappedTrack: Track = {
-          id: `${source}-${rawId}`,
+          id: `${apiId}-${source}-${rawId}`,
           name: item.name ?? trimmedKeyword,
           artist: artistText,
           album: item.album ?? '',
           duration: '',
+          apiId,
           source,
           keyword: trimmedKeyword,
           trackId,
@@ -813,14 +766,14 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
         setIsSearching(false);
       }
     }
-  }, [callMusicApi, currentSongIndex, musicList, resetPlayer, selectedBitrate]);
+  }, [currentSongIndex, musicList, resetPlayer, selectedBitrate]);
 
   const handleSearch = useCallback(async () => {
     const keyword = searchTerm.trim();
     if (!keyword) {
       searchRequestIdRef.current += 1;
       setIsSearching(false);
-      const filtered = localTracks.filter((track) => track.source === selectedSource);
+      const filtered = localTracks.filter((track) => track.apiId === selectedApiId && track.source === selectedSource);
       setAllTracks(filtered);
       setMusicList(filtered);
       setShowingSearchResults(false);
@@ -835,27 +788,27 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     }
 
     setSearchPageInput('1');
-    await performSearch(selectedSource, keyword, 1);
-  }, [localTracks, performSearch, resetPlayer, searchTerm, selectedSource]);
+    await performSearch(selectedApiId, selectedSource, keyword, 1);
+  }, [localTracks, performSearch, resetPlayer, searchTerm, selectedApiId, selectedSource]);
 
   const handleSearchPagePrev = useCallback(() => {
     if (!lastSearchKeyword) return;
     if (searchPage <= 1) return;
-    void performSearch(selectedSource, lastSearchKeyword, Math.max(1, searchPage - 1));
-  }, [lastSearchKeyword, performSearch, searchPage, selectedSource]);
+    void performSearch(selectedApiId, selectedSource, lastSearchKeyword, Math.max(1, searchPage - 1));
+  }, [lastSearchKeyword, performSearch, searchPage, selectedApiId, selectedSource]);
 
   const handleSearchPageNext = useCallback(() => {
     if (!lastSearchKeyword) return;
     if (!searchHasMore) return;
-    void performSearch(selectedSource, lastSearchKeyword, searchPage + 1);
-  }, [lastSearchKeyword, performSearch, searchHasMore, searchPage, selectedSource]);
+    void performSearch(selectedApiId, selectedSource, lastSearchKeyword, searchPage + 1);
+  }, [lastSearchKeyword, performSearch, searchHasMore, searchPage, selectedApiId, selectedSource]);
 
   const handleSearchPageSubmit = useCallback(() => {
     if (!lastSearchKeyword) return;
     const pageValue = Number.parseInt(searchPageInput, 10);
     if (!Number.isFinite(pageValue) || pageValue <= 0) return;
-    void performSearch(selectedSource, lastSearchKeyword, pageValue);
-  }, [lastSearchKeyword, performSearch, searchPageInput, selectedSource]);
+    void performSearch(selectedApiId, selectedSource, lastSearchKeyword, pageValue);
+  }, [lastSearchKeyword, performSearch, searchPageInput, selectedApiId, selectedSource]);
 
   const handleCloseInfoModal = useCallback(() => {
     setInfoModalVisible(false);
@@ -897,18 +850,17 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     }
   }, [handleShowTrackInfo, infoModalTrack]);
 
+  const handleApiChange = useCallback((apiId: MusicApiId) => {
+    if (apiId === selectedApiId) return;
 
-  const handleSourceChange = useCallback((source: MusicSource) => {
-    if (source === selectedSource) return;
-
-    setSelectedSource(source);
+    setSelectedApiId(apiId);
     if (searchTerm.trim()) {
       setSearchPageInput('1');
-      void performSearch(source, searchTerm.trim(), 1);
+      void performSearch(apiId, selectedSource, searchTerm.trim(), 1);
     } else {
       searchRequestIdRef.current += 1;
       setIsSearching(false);
-      const filtered = localTracks.filter((track) => track.source === source);
+      const filtered = localTracks.filter((track) => track.apiId === apiId && track.source === selectedSource);
       setAllTracks(filtered);
       setMusicList(filtered);
       setShowingSearchResults(false);
@@ -920,13 +872,37 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
       setLastSearchKeyword(null);
       resetPlayer();
     }
-  }, [localTracks, performSearch, resetPlayer, searchTerm, selectedSource]);
+  }, [localTracks, performSearch, resetPlayer, searchTerm, selectedApiId, selectedSource]);
+
+  const handleSourceChange = useCallback((source: MusicSource) => {
+    if (source === selectedSource) return;
+
+    setSelectedSource(source);
+    if (searchTerm.trim()) {
+      setSearchPageInput('1');
+      void performSearch(selectedApiId, source, searchTerm.trim(), 1);
+    } else {
+      searchRequestIdRef.current += 1;
+      setIsSearching(false);
+      const filtered = localTracks.filter((track) => track.apiId === selectedApiId && track.source === source);
+      setAllTracks(filtered);
+      setMusicList(filtered);
+      setShowingSearchResults(false);
+      setShowTranslation(false);
+      setErrorMessage(null);
+      setSearchPage(1);
+      setSearchPageInput('1');
+      setSearchHasMore(false);
+      setLastSearchKeyword(null);
+      resetPlayer();
+    }
+  }, [localTracks, performSearch, resetPlayer, searchTerm, selectedApiId, selectedSource]);
 
  /* useEffect(() => {
     if (searchTerm.trim() === '' && showingSearchResults) {
       searchRequestIdRef.current += 1;
       setIsSearching(false);
-      const filtered = localTracks.filter((track) => track.source === selectedSource);
+      const filtered = localTracks.filter((track) => track.apiId === selectedApiId && track.source === selectedSource);
       setAllTracks(filtered);
       setMusicList(filtered);
       setShowingSearchResults(false);
@@ -934,7 +910,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
       setErrorMessage(null);
       resetPlayer();
     }
-  }, [localTracks, resetPlayer, searchTerm, selectedSource, showingSearchResults]);*/
+  }, [localTracks, resetPlayer, searchTerm, selectedApiId, selectedSource, showingSearchResults]);*/
 
   useEffect(() => {
     if (selectedBitrate <= 0) return;
@@ -1029,16 +1005,18 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
   );
 
   const infoTrack = infoModalTrack;
+  const infoApi = infoTrack ? getMusicApi(infoTrack.apiId) : null;
   const infoSourceLabel = infoTrack
     ? AVAILABLE_SOURCES.find((item) => item.value === infoTrack.source)?.label ?? infoTrack.source
     : '';
-  const lyricLink = infoTrack && (infoTrack.lyricId ?? infoTrack.trackId)
-    ? `${MUSIC_API_BASE}?types=lyric&source=${infoTrack.source}&id=${infoTrack.lyricId ?? infoTrack.trackId}`
+  const infoLyricId = infoTrack?.lyricId ?? infoTrack?.trackId;
+  const lyricLink = infoTrack && infoApi && infoLyricId
+    ? infoApi.buildResourceUrl('lyric', { source: infoTrack.source, id: infoLyricId })
     : null;
   const coverLink = infoTrack?.cover
     ? infoTrack.cover
     : infoTrack?.picId
-    ? `${MUSIC_API_BASE}?types=pic&source=${infoTrack.source}&id=${infoTrack.picId}&size=${DEFAULT_COVER_SIZE}`
+    ? infoApi?.buildResourceUrl('pic', { source: infoTrack.source, id: infoTrack.picId, size: DEFAULT_COVER_SIZE }) ?? null
     : null;
   const audioLink = infoTrack?.url ?? null;
   const fileSizeLabel = formatFileSizeLabel(infoTrack?.fileSizeKb);
@@ -1072,6 +1050,18 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
 
           <div className="p-3 md:p-6 border-b border-slate-200/60 shrink-0">
             <div className="flex flex-wrap items-center gap-3 mb-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-slate-600">API</span>
+                <select
+                  value={selectedApiId}
+                  onChange={(e) => handleApiChange(e.target.value as MusicApiId)}
+                  className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                >
+                  {MUSIC_APIS.map((api) => (
+                    <option key={api.id} value={api.id}>{api.label}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-slate-600">音源</span>
                 <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white/70">
@@ -1460,6 +1450,13 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
             </button>
           </div>
         </div>
+        {mobileExpanded && (
+          <div
+            className="md:hidden fixed inset-0 z-30 bg-slate-900/20"
+            onClick={() => setMobileExpanded(false)}
+            aria-hidden="true"
+          />
+        )}
         <div
           className={`md:hidden fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur shadow-2xl flex flex-col overflow-hidden rounded-t-2xl transform transition-transform duration-300 ease-in-out ${mobileExpanded ? 'translate-y-0 h-[65vh]' : 'translate-y-full pointer-events-none h-[52vh]'}`}
         >

@@ -1,3 +1,5 @@
+import type { MusicApiId } from '../api/types';
+
 export type MusicSource = 'netease' | 'kuwo' | 'joox';
 
 export type LocalTrack = {
@@ -6,6 +8,7 @@ export type LocalTrack = {
   artist?: string;
   album?: string;
   duration?: string;
+  apiId?: MusicApiId;
   source: MusicSource;
   keyword?: string;
   trackId?: string;
