@@ -2,7 +2,7 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Howl } from 'howler';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Share, Repeat, Shuffle, Repeat1, ChevronUp, ChevronDown, Search, MoreVertical } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Share, Repeat, Shuffle, Repeat1, ChevronUp, ChevronDown, Search, MoreVertical, X } from 'lucide-react';
 import { LOCAL_TRACKS, LocalTrack, MusicSource } from '../data/localTracks';
 import { DEFAULT_MUSIC_API_ID, getMusicApi, MUSIC_APIS } from '../api';
 import type { ApiSearchItem, MusicApiId } from '../api';
@@ -21,6 +21,12 @@ const AVAILABLE_SOURCES: { value: MusicSource; label: string }[] = [
 type LyricLine = {
   time: number;
   text: string;
+};
+
+type CombinedLyricLine = {
+  time: number;
+  original: string;
+  translation: string;
 };
 
 export type Track = Omit<LocalTrack, 'apiId'> & {
@@ -163,6 +169,15 @@ const MusicPlayer = () => {
   const [currentSongIndex, setCurrentSongIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+  const [dragProgress, setDragProgress] = useState(0);
+  const [isDragCancel, setIsDragCancel] = useState(false);
+  const isDraggingProgressRef = useRef(false);
+  const dragProgressRef = useRef(0);
+  const isDragCancelRef = useRef(false);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
+  const desktopPlayBtnRef = useRef<HTMLButtonElement | null>(null);
+  const mobilePlayBtnRef = useRef<HTMLButtonElement | null>(null);
   const [volume, setVolume] = useState(0.7);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -221,32 +236,57 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
 
   const originalLyricLines = useMemo(() => parseLyricLines(currentSong?.lyric), [currentSong?.lyric]);
   const translationLyricLines = useMemo(() => parseLyricLines(currentSong?.tLyric), [currentSong?.tLyric]);
-  const displayLyricLines = useMemo<LyricLine[]>(() => {
-    const hasTranslation = translationLyricLines.length > 0;
-    const hasOriginal = originalLyricLines.length > 0;
-    if (showTranslation && hasTranslation) {
-      return translationLyricLines;
-    }
-    if (hasOriginal) {
-      return originalLyricLines;
-    }
-    if (hasTranslation) {
-      return translationLyricLines;
-    }
-    return [] as LyricLine[];
-  }, [originalLyricLines, showTranslation, translationLyricLines]);
   const hasTranslationLyric = translationLyricLines.length > 0;
   const hasOriginalLyric = originalLyricLines.length > 0;
+
+  useEffect(() => {
+    if (hasTranslationLyric) {
+      setShowTranslation(true);
+    }
+  }, [currentSong?.id, hasTranslationLyric]);
+
+  function findTranslationForTime(time: number, translations: LyricLine[]): string {
+    let best = '';
+    let bestDiff = Number.POSITIVE_INFINITY;
+    for (const t of translations) {
+      if (!Number.isFinite(t.time)) continue;
+      const diff = Math.abs(t.time - time);
+      if (diff < bestDiff && diff < 0.5) {
+        bestDiff = diff;
+        best = t.text;
+      }
+    }
+    return best;
+  }
+
+  const displayLyricLines = useMemo<CombinedLyricLine[]>(() => {
+    const hasTranslation = hasTranslationLyric && showTranslation;
+    if (hasTranslation && !hasOriginalLyric) {
+      return translationLyricLines.map((line) => ({
+        time: line.time,
+        original: line.text,
+        translation: '',
+      }));
+    }
+    if (!hasOriginalLyric) return [];
+    return originalLyricLines.map((line) => ({
+      time: line.time,
+      original: line.text,
+      translation: hasTranslation ? findTranslationForTime(line.time, translationLyricLines) : '',
+    }));
+  }, [hasOriginalLyric, hasTranslationLyric, originalLyricLines, showTranslation, translationLyricLines]);
+
   const hasAnyLyric = displayLyricLines.length > 0 || hasTranslationLyric || hasOriginalLyric;
-  const activeLyricIndex = useMemo(() => {
+
+  function findLyricIndexAt(time: number): number {
     if (displayLyricLines.length === 0) return -1;
     let index = -1;
     for (let i = 0; i < displayLyricLines.length; i += 1) {
       const entry = displayLyricLines[i];
       if (!Number.isFinite(entry.time)) continue;
-      if (entry.time <= currentTime + 0.25) {
+      if (entry.time <= time + 0.25) {
         index = i;
-      } else if (entry.time > currentTime + 0.25) {
+      } else if (entry.time > time + 0.25) {
         break;
       }
     }
@@ -258,17 +298,25 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
       return firstFinite;
     }
     return index;
-  }, [currentTime, displayLyricLines]);
+  }
+
+  const activeLyricIndex = useMemo(() => {
+    if (isDraggingProgress && lyricsExpanded) {
+      const dragTime = (dragProgress / 100) * (duration || 0);
+      return findLyricIndexAt(dragTime);
+    }
+    return findLyricIndexAt(currentTime);
+  }, [currentTime, displayLyricLines, isDraggingProgress, dragProgress, duration, lyricsExpanded]);
 
   const activeLyricKey = useMemo(() => {
     if (activeLyricIndex < 0 || activeLyricIndex >= displayLyricLines.length) return null;
     const entry = displayLyricLines[activeLyricIndex];
     const timeKey = Number.isFinite(entry.time) ? entry.time.toFixed(3) : `idx-${activeLyricIndex}`;
-    return `${currentSong?.id ?? 'unknown'}-${showTranslation ? 'trans' : 'orig'}-${timeKey}`;
-  }, [activeLyricIndex, currentSong?.id, displayLyricLines, showTranslation]);
+    return `${currentSong?.id ?? 'unknown'}-combined-${timeKey}`;
+  }, [activeLyricIndex, currentSong?.id, displayLyricLines]);
 
   const previewLyricLines = useMemo(() => {
-    if (displayLyricLines.length === 0) return [] as { index: number; line: LyricLine }[];
+    if (displayLyricLines.length === 0) return [] as { index: number; line: CombinedLyricLine }[];
     const baseIndex = activeLyricIndex >= 0 && activeLyricIndex < displayLyricLines.length ? activeLyricIndex : 0;
     const indices = new Set<number>();
     if (displayLyricLines[baseIndex]) indices.add(baseIndex);
@@ -296,12 +344,12 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
       if (!target) return;
       const offset = target.offsetTop - container.clientHeight / 2 + target.clientHeight / 2;
       if (typeof container.scrollTo === 'function') {
-        container.scrollTo({ top: Math.max(offset, 0), behavior: 'smooth' });
+        container.scrollTo({ top: Math.max(offset, 0), behavior: isDraggingProgress ? 'auto' : 'smooth' });
       } else {
         container.scrollTop = Math.max(offset, 0);
       }
     });
-  }, [activeLyricKey, lyricDesktopRef, lyricMobileRef, lyricsExpanded, mobileExpanded]);
+  }, [activeLyricKey, lyricDesktopRef, lyricMobileRef, lyricsExpanded, mobileExpanded, isDraggingProgress]);
 
   const updateTrackInStates = useCallback((updated: Track) => {
     setLocalTracks((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
@@ -407,7 +455,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
       }
     }
 
-    const fileSizeKb = typeof urlData.size === 'number' ? urlData.size : track.fileSizeKb ?? null;
+    const fileSizeKb = typeof urlData.size === 'number' ? urlData.size / 1024 : track.fileSizeKb ?? null;
 
     const resolvedTrack: Track = {
       ...track,
@@ -922,24 +970,110 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     void playSong(currentSongIndex, isPlaying);
   }, [currentSongIndex, isPlaying, loadingTrackIndex, musicList, playSong, selectedBitrate]);
 
-  // 进度条点击跳转
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // 进度条点击/拖动跳转
+  const updateDragProgress = (ratio: number) => {
+    const r = Math.max(0, Math.min(1, ratio));
+    dragProgressRef.current = r * 100;
+    setDragProgress(r * 100);
+  };
+
+  const checkDragCancel = (clientX: number, clientY: number): boolean => {
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el) return false;
+    if (desktopPlayBtnRef.current && desktopPlayBtnRef.current.contains(el)) return true;
+    if (mobilePlayBtnRef.current && mobilePlayBtnRef.current.contains(el)) return true;
+    return false;
+  };
+
+  const setDragCancelState = (value: boolean) => {
+    isDragCancelRef.current = value;
+    setIsDragCancel(value);
+  };
+
+  const commitSeek = () => {
+    if (isDragCancelRef.current) return;
     const s = soundRef.current;
     if (!s) return;
-
-    const progressBar = e.currentTarget;
-    const rect = progressBar.getBoundingClientRect();
-    let clickPosition = (e.clientX - rect.left) / rect.width;
-    if (isNaN(clickPosition)) clickPosition = 0;
-    clickPosition = Math.max(0, Math.min(1, clickPosition));
-
+    const ratio = dragProgressRef.current / 100;
     const dur = s.duration();
-    const baseDur = dur && isFinite(dur) && dur > 0 ? dur : duration || 0;
-    const newTime = clickPosition * baseDur;
-
+    const baseDur = dur && Number.isFinite(dur) && dur > 0 ? dur : duration || 0;
+    const newTime = ratio * baseDur;
     s.seek(newTime);
     setCurrentTime(newTime);
-    setProgress(clickPosition * 100);
+    setProgress(ratio * 100);
+  };
+
+  const getRatioFromEvent = (clientX: number, bar: HTMLElement): number => {
+    const rect = bar.getBoundingClientRect();
+    let r = (clientX - rect.left) / rect.width;
+    if (Number.isNaN(r)) r = 0;
+    return Math.max(0, Math.min(1, r));
+  };
+
+  const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    isDraggingProgressRef.current = true;
+    setDragCancelState(false);
+    const bar = e.currentTarget;
+    progressBarRef.current = bar;
+    setIsDraggingProgress(true);
+    updateDragProgress(getRatioFromEvent(e.clientX, bar));
+
+    const handleMove = (ev: MouseEvent) => {
+      if (!isDraggingProgressRef.current || !progressBarRef.current) return;
+      updateDragProgress(getRatioFromEvent(ev.clientX, progressBarRef.current));
+      const cancel = checkDragCancel(ev.clientX, ev.clientY);
+      if (cancel !== isDragCancelRef.current) setDragCancelState(cancel);
+    };
+    const handleUp = (ev: MouseEvent) => {
+      if (!isDraggingProgressRef.current) return;
+      const cancel = checkDragCancel(ev.clientX, ev.clientY);
+      isDraggingProgressRef.current = false;
+      if (!cancel) {
+        commitSeek();
+      }
+      setIsDraggingProgress(false);
+      setDragCancelState(false);
+      progressBarRef.current = null;
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
+
+  const handleProgressTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    isDraggingProgressRef.current = true;
+    setDragCancelState(false);
+    const bar = e.currentTarget;
+    progressBarRef.current = bar;
+    setIsDraggingProgress(true);
+    updateDragProgress(getRatioFromEvent(touch.clientX, bar));
+  };
+
+  const handleProgressTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDraggingProgressRef.current) return;
+    const touch = e.touches[0];
+    if (!touch || !progressBarRef.current) return;
+    e.preventDefault();
+    updateDragProgress(getRatioFromEvent(touch.clientX, progressBarRef.current));
+    const cancel = checkDragCancel(touch.clientX, touch.clientY);
+    if (cancel !== isDragCancelRef.current) setDragCancelState(cancel);
+  };
+
+  const handleProgressTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDraggingProgressRef.current) return;
+    const touch = e.changedTouches[0];
+    const cancel = touch ? checkDragCancel(touch.clientX, touch.clientY) : isDragCancelRef.current;
+    isDraggingProgressRef.current = false;
+    if (!cancel) {
+      commitSeek();
+    }
+    setIsDraggingProgress(false);
+    setDragCancelState(false);
+    progressBarRef.current = null;
   };
 
   // 格式化时间
@@ -1301,7 +1435,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                             onClick={() => setShowTranslation((prev) => !prev)}
                             className="text-xs px-2 py-1 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 transition-colors"
                           >
-                            {showTranslation ? '查看原文' : '查看翻译'}
+                            {showTranslation ? '隐藏翻译' : '显示翻译'}
                           </button>
                         )}
                         <button
@@ -1321,15 +1455,30 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                         {displayLyricLines.length > 0 ? (
                           displayLyricLines.map((line, idx) => {
                             const isActive = idx === activeLyricIndex;
-                            const key = `lyric-desktop-${showTranslation ? 'trans' : 'orig'}-${idx}`;
+                            const key = `lyric-desktop-combined-${idx}`;
+                            const hasTime = Number.isFinite(line.time);
                             return (
-                              <p
+                              <div
                                 key={key}
-                                data-lyric-key={`${currentSong?.id ?? 'unknown'}-${showTranslation ? 'trans' : 'orig'}-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${idx}`}`}
-                                className={`leading-relaxed transition-colors ${isActive ? 'text-sky-600 font-bold text-lg' : 'text-slate-700 text-base'}`}
+                                data-lyric-key={`${currentSong?.id ?? 'unknown'}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${idx}`}`}
+                                className={`py-1 transition-colors flex items-start gap-3 ${isActive ? '' : ''}`}
                               >
-                                {line.text}
-                              </p>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-600 font-bold text-lg opacity-100' : 'text-slate-700 text-base opacity-70'}`}>
+                                    {line.original}
+                                  </p>
+                                  {line.translation ? (
+                                    <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-500 font-semibold text-base mt-0.5 opacity-100' : 'text-slate-500 text-sm mt-0.5 opacity-70'}`}>
+                                      {line.translation}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                {hasTime ? (
+                                  <span className="text-xs text-slate-400 flex-shrink-0 pt-1 select-none">
+                                    {formatTime(line.time)}
+                                  </span>
+                                ) : null}
+                              </div>
                             );
                           })
                         ) : (
@@ -1341,14 +1490,18 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                         {previewLyricLines.length > 0 ? (
                           previewLyricLines.map(({ index, line }) => {
                             const isActive = index === activeLyricIndex;
-                            const key = `lyric-preview-${showTranslation ? 'trans' : 'orig'}-${index}`;
+                            const key = `lyric-preview-combined-${index}`;
                             return (
-                              <p
-                                key={key}
-                                className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-600 font-semibold text-lg' : 'text-slate-600 text-sm'}`}
-                              >
-                                {line.text}
-                              </p>
+                              <div key={key} className="py-0.5">
+                                <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-600 font-semibold text-lg' : 'text-slate-600 text-sm'}`}>
+                                  {line.original}
+                                </p>
+                                {line.translation ? (
+                                  <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-500 font-medium text-base mt-0.5' : 'text-slate-500 text-xs mt-0.5'}`}>
+                                    {line.translation}
+                                  </p>
+                                ) : null}
+                              </div>
                             );
                           })
                         ) : (
@@ -1361,13 +1514,19 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
               </div>
 
               <div className={`w-full max-w-2xl ${lyricsExpanded ? 'mb-4 md:mb-6 mt-2 md:mt-4' : 'mb-4 md:mb-6'}`}>
-                <div className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden" onClick={handleProgressClick}>
-                  <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-300 relative" style={{ width: `${progress}%` }}>
+                <div
+                  className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden select-none touch-none"
+                  onMouseDown={handleProgressMouseDown}
+                  onTouchStart={handleProgressTouchStart}
+                  onTouchMove={handleProgressTouchMove}
+                  onTouchEnd={handleProgressTouchEnd}
+                >
+                  <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full relative" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}>
                     <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg" />
                   </div>
                 </div>
                 <div className="flex justify-between text-sm text-slate-600 mt-2">
-                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(isDraggingProgress ? (dragProgress / 100) * (duration || 0) : currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
@@ -1393,8 +1552,12 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                   <SkipBack size={24} />
                 </button>
 
-                <button onClick={togglePlayPause} className="p-4 bg-gradient-to-r from-sky-400 to-blue-500 rounded-full hover:shadow-2xl transition-all duration-300 transform hover:scale-110 shadow-lg text-white">
-                  {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+                <button
+                  ref={desktopPlayBtnRef}
+                  onClick={togglePlayPause}
+                  className={`p-4 rounded-full shadow-lg text-white transition-all duration-300 transform hover:scale-110 ${isDraggingProgress && isDragCancel ? 'bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-2xl scale-110' : 'bg-gradient-to-r from-sky-400 to-blue-500 hover:shadow-2xl'}`}
+                >
+                  {isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} />}
                 </button>
 
                 <button onClick={playNext} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110">
@@ -1524,15 +1687,30 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                       {displayLyricLines.length > 0 ? (
                         displayLyricLines.map((line, idx) => {
                           const isActive = idx === activeLyricIndex;
-                          const key = `lyric-mobile-${showTranslation ? 'trans' : 'orig'}-${idx}`;
+                          const key = `lyric-mobile-combined-${idx}`;
+                          const hasTime = Number.isFinite(line.time);
                           return (
-                            <p
+                            <div
                               key={key}
-                              data-lyric-key={`${currentSong?.id ?? 'unknown'}-${showTranslation ? 'trans' : 'orig'}-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${idx}`}`}
-                              className={`leading-relaxed transition-colors ${isActive ? 'text-sky-600 font-bold text-base' : 'text-slate-700 text-sm'}`}
+                              data-lyric-key={`${currentSong?.id ?? 'unknown'}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${idx}`}`}
+                              className="py-1 flex items-start gap-2"
                             >
-                              {line.text}
-                            </p>
+                              <div className="flex-1 min-w-0">
+                                <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-600 font-bold text-base opacity-100' : 'text-slate-700 text-sm opacity-70'}`}>
+                                  {line.original}
+                                </p>
+                                {line.translation ? (
+                                  <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-500 font-semibold text-sm mt-0.5 opacity-100' : 'text-slate-500 text-xs mt-0.5 opacity-70'}`}>
+                                    {line.translation}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {hasTime ? (
+                                <span className="text-[10px] text-slate-400 flex-shrink-0 pt-1 select-none">
+                                  {formatTime(line.time)}
+                                </span>
+                              ) : null}
+                            </div>
                           );
                         })
                       ) : (
@@ -1544,14 +1722,18 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                       {previewLyricLines.length > 0 ? (
                         previewLyricLines.map(({ index, line }) => {
                           const isActive = index === activeLyricIndex;
-                          const key = `lyric-preview-mobile-${showTranslation ? 'trans' : 'orig'}-${index}`;
+                          const key = `lyric-preview-mobile-combined-${index}`;
                           return (
-                            <p
-                              key={key}
-                              className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-600 font-semibold text-base' : 'text-slate-600 text-sm'}`}
-                            >
-                              {line.text}
-                            </p>
+                            <div key={key} className="py-0.5">
+                              <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-600 font-semibold text-base' : 'text-slate-600 text-sm'}`}>
+                                {line.original}
+                              </p>
+                              {line.translation ? (
+                                <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-500 font-medium text-sm mt-0.5' : 'text-slate-500 text-xs mt-0.5'}`}>
+                                  {line.translation}
+                                </p>
+                              ) : null}
+                            </div>
                           );
                         })
                       ) : (
@@ -1568,13 +1750,19 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
             </div>
 
             <div className="mt-4">
-              <div className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden" onClick={handleProgressClick}>
-                <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-300 relative" style={{ width: `${progress}%` }}>
+              <div
+                className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden select-none touch-none"
+                onMouseDown={handleProgressMouseDown}
+                onTouchStart={handleProgressTouchStart}
+                onTouchMove={handleProgressTouchMove}
+                onTouchEnd={handleProgressTouchEnd}
+              >
+                <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full relative" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}>
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg" />
                 </div>
               </div>
               <div className="flex justify-between text-xs text-slate-600 mt-2">
-                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(isDraggingProgress ? (dragProgress / 100) * (duration || 0) : currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
             </div>
@@ -1598,8 +1786,12 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
               <button onClick={playPrevious} className="p-2 text-slate-600 hover:text-slate-900">
                 <SkipBack size={24} />
               </button>
-              <button onClick={togglePlayPause} className="p-3 bg-gradient-to-r from-sky-400 to-blue-500 rounded-full text-white">
-                {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+              <button
+                ref={mobilePlayBtnRef}
+                onClick={togglePlayPause}
+                className={`p-3 rounded-full text-white transition-all duration-200 ${isDraggingProgress && isDragCancel ? 'bg-gradient-to-r from-red-500 to-rose-600 scale-110' : 'bg-gradient-to-r from-sky-400 to-blue-500'}`}
+              >
+                {isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} />}
               </button>
               <button onClick={playNext} className="p-2 text-slate-600 hover:text-slate-900">
                 <SkipForward size={24} />
