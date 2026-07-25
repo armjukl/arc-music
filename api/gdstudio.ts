@@ -11,32 +11,12 @@ import {
 } from './types';
 
 const GDSTUDIO_API_BASE = 'https://music-api.gdstudio.xyz/api.php';
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 60;
-
-const requestTimestamps: number[] = [];
-
-function registerRequest(): void {
-  const now = Date.now();
-  const windowStart = now - RATE_LIMIT_WINDOW_MS;
-
-  while (requestTimestamps.length > 0 && requestTimestamps[0] < windowStart) {
-    requestTimestamps.shift();
-  }
-
-  if (requestTimestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
-    throw new Error('请求过于频繁，请稍后再试');
-  }
-
-  requestTimestamps.push(now);
-}
 
 function buildUrl(params: Record<string, string>): string {
   return `${GDSTUDIO_API_BASE}?${new URLSearchParams(params).toString()}`;
 }
 
 async function request<T>(params: Record<string, string>): Promise<T> {
-  registerRequest();
   const response = await fetch(buildUrl(params), { cache: 'no-store' });
   if (!response.ok) {
     throw new Error('音乐服务暂时不可用');
