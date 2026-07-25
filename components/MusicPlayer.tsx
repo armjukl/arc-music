@@ -1107,15 +1107,15 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
   };
 
   const coverNodeSmall = (
-    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center mr-4">
+    <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center mr-4 shadow-md ring-1 ring-white/40">
       {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={coverUrl} alt="cover" className="w-full h-full object-cover" />
       ) : isPlaying ? (
-        <div className="flex space-x-1">
-          <div className="w-1 h-4 bg-white animate-pulse"></div>
-          <div className="w-1 h-4 bg-white animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-          <div className="w-1 h-4 bg-white animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+        <div className="flex items-end space-x-1 h-5">
+          <div className="eq-bar" style={{ animationDelay: '0s' }}></div>
+          <div className="eq-bar" style={{ animationDelay: '0.15s' }}></div>
+          <div className="eq-bar" style={{ animationDelay: '0.3s' }}></div>
         </div>
       ) : (
         <span className="text-sm font-bold text-white">▶</span>
@@ -1124,12 +1124,12 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
   );
 
   const coverNodeLarge = (
-    <div className="w-56 h-56 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-xl transition-transform duration-1000">
+    <div className={`w-56 h-56 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/30 transition-all duration-500 ${isPlaying ? 'animate-vinyl-spin shadow-glow-lg' : ''}`}>
       {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverUrl} alt="cover" className="w-full h-full object-contain bg-slate-900/10" />
+        <img src={coverUrl} alt="cover" className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-sky-400 via-blue-400 to-cyan-400 flex items-center justify-center">
+        <div className="w-full h-full bg-gradient-to-br from-sky-400 via-indigo-400 to-purple-500 flex items-center justify-center">
           <div className="text-white text-center">
             <span className="text-lg font-semibold">专辑封面</span>
           </div>
@@ -1161,10 +1161,11 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
     <div className="relative min-h-screen text-slate-800">
       <div className="absolute inset-0 -z-10">
         <div
-          className="h-full w-full bg-center bg-cover scale-105 transform"
+          className="h-full w-full bg-center bg-cover scale-110 transform"
           style={{ backgroundImage: "url('bg/5.jpg')" }}
         />
-        <div className="absolute inset-0 bg-white/50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-sky-50/50 to-indigo-50/60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/10 via-transparent to-white/20" />
       </div>
 
       <div className="h-screen flex flex-col md:flex-row">
@@ -1173,23 +1174,23 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
         <div
           className={`
             flex-1 flex flex-col overflow-hidden p-4
-            md:w-2/3 md:border-r md:border-slate-200/70 md:bg-white/40
+            md:w-2/3 md:border-r md:border-white/30 md:bg-white/30 md:backdrop-blur-xl
           `}
         >
-          <div className="px-4 py-2 md:px-6 md:py-3 border-b border-slate-200/70 shrink-0">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
+          <div className="px-4 py-2 md:px-6 md:py-3 border-b border-white/30 shrink-0">
+            <h1 className="text-3xl font-extrabold tracking-tight shimmer-text">
               Arc-music
             </h1>
           </div>
 
-          <div className="p-3 md:p-6 border-b border-slate-200/60 shrink-0">
+          <div className="p-3 md:p-6 border-b border-white/30 shrink-0">
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-slate-600">API</span>
                 <select
                   value={selectedApiId}
                   onChange={(e) => handleApiChange(e.target.value as MusicApiId)}
-                  className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  className="px-3 py-1.5 rounded-lg border border-white/40 bg-white/60 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/60 backdrop-blur transition-all"
                 >
                   {MUSIC_APIS.map((api) => (
                     <option key={api.id} value={api.id}>{api.label}</option>
@@ -1198,13 +1199,13 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
               </div>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-slate-600">音源</span>
-                <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white/70">
+                <div className="flex overflow-hidden rounded-lg border border-white/40 bg-white/60 backdrop-blur">
                   {AVAILABLE_SOURCES.map(({ value, label }) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => handleSourceChange(value)}
-                      className={`px-3 py-1 text-sm transition-colors ${selectedSource === value ? 'bg-sky-500 text-white' : 'text-slate-600 hover:bg-white/60'}`}
+                      className={`px-3 py-1.5 text-sm transition-all duration-200 ${selectedSource === value ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
                     >
                       {label}
                     </button>
@@ -1216,7 +1217,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                 <select
                   value={selectedBitrate}
                   onChange={(e) => setSelectedBitrate(Number(e.target.value) as BitrateOption)}
-                  className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  className="px-3 py-1.5 rounded-lg border border-white/40 bg-white/60 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/60 backdrop-blur transition-all"
                 >
                   {BITRATE_OPTIONS.map((option) => (
                     <option key={option} value={option}>{`${option} kbps${option >= 740 ? ' (无损)' : ''}`}</option>
@@ -1235,27 +1236,27 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                     void handleSearch();
                   }
                 }}
-                placeholder="搜索歌曲/歌手/专辑"
-                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white/70 text-slate-800 placeholder-slate-500"
+                placeholder="搜索歌曲 / 歌手 / 专辑"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400/60 focus:border-sky-400/40 bg-white/60 backdrop-blur text-slate-800 placeholder-slate-400 transition-all"
               />
               <button
                 type="button"
                 onClick={() => { void handleSearch(); }}
                 disabled={isSearching}
-                className={`px-4 py-2 rounded-lg bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:shadow-md inline-flex items-center justify-center ${isSearching ? 'opacity-80 cursor-not-allowed' : ''}`}
+                className={`px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white font-medium shadow-md hover:shadow-glow inline-flex items-center justify-center transition-all duration-300 ${isSearching ? 'opacity-80 cursor-not-allowed' : 'hover:scale-105'}`}
               >
                 {isSearching ? (
                   <div className="w-4 h-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Search size={16} className="mr-1" />
+                    <Search size={16} className="mr-1.5" />
                     搜索
                   </>
                 )}
               </button>
             </div>
             {errorMessage && (
-              <div className="mt-2 text-sm text-red-500">{errorMessage}</div>
+              <div className="mt-2 text-sm text-rose-500 bg-rose-50/60 px-3 py-1.5 rounded-lg">{errorMessage}</div>
             )}
           </div>
 
@@ -1310,30 +1311,30 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
               <div
                 key={song.id}
                 className={`
-                  group flex items-center p-4 rounded-2xl mb-3 cursor-pointer 
-                  transition-all duration-300 transform hover:scale-[1.01]
-                  ${index === currentSongIndex 
-                    ? 'bg-white/60 shadow-md' 
-                    : 'hover:bg-white/50'
+                  group flex items-center p-3 rounded-2xl mb-2 cursor-pointer
+                  transition-all duration-300 transform hover:scale-[1.01] hover:shadow-card-hover
+                  ${index === currentSongIndex
+                    ? 'glass-card-strong shadow-card ring-1 ring-sky-300/30'
+                    : 'hover:bg-white/50 hover:shadow-card'
                   }
                 `}
                 onClick={() => { void playSong(index); }}
               >
                 <div
                   className={`
-                    relative w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center mr-4
+                    relative w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center mr-4
                     transition-all duration-300
                     ${index === currentSongIndex ? 'shadow-md' : 'group-hover:shadow-sm'}
                   `}
                 >
-                  <div className="w-full h-full bg-gradient-to-br from-sky-400 to-blue-500 rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="w-full h-full bg-gradient-to-br from-sky-400 to-indigo-500 rounded-xl flex items-center justify-center overflow-hidden">
                     {loadingTrackIndex === index ? (
                       <div className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full animate-spin"></div>
                     ) : index === currentSongIndex && isPlaying ? (
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-3 bg-white animate-pulse"></div>
-                        <div className="w-1 h-3 bg-white animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-1 h-3 bg-white animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                      <div className="flex items-end space-x-0.5 h-4">
+                        <div className="eq-bar" style={{ animationDelay: '0s', width: '2px' }}></div>
+                        <div className="eq-bar" style={{ animationDelay: '0.15s', width: '2px' }}></div>
+                        <div className="eq-bar" style={{ animationDelay: '0.3s', width: '2px' }}></div>
                       </div>
                     ) : (
                       <span className="text-xs font-bold text-white">{index + 1}</span>
@@ -1342,7 +1343,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-semibold truncate ${index === currentSongIndex ? 'text-slate-900' : 'text-slate-700'}`}>
+                  <p className={`font-semibold truncate transition-colors ${index === currentSongIndex ? 'text-sky-600' : 'text-slate-700 group-hover:text-slate-900'}`}>
                     {song.name}
                   </p>
                   <p className="text-sm text-slate-500 truncate">{song.artist ?? ''}</p>
@@ -1351,14 +1352,14 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); void handleShowTrackInfo(song); }}
-                    className="opacity-0 group-hover:opacity-100 hover:text-slate-600 transition-all duration-300"
+                    className="opacity-0 group-hover:opacity-100 hover:text-sky-600 transition-all duration-300 p-1.5 rounded-lg hover:bg-sky-50/60"
                   >
                     <MoreVertical size={16} />
                   </button>
-                  <button className="opacity-0 group-hover:opacity-100 hover:text-sky-600 transition-all duration-300">
+                  <button className="opacity-0 group-hover:opacity-100 hover:text-rose-500 transition-all duration-300 p-1.5 rounded-lg hover:bg-rose-50/60">
                     <Heart size={16} />
                   </button>
-                  <span className="text-sm text-slate-500">{song.duration ?? ''}</span>
+                  <span className="text-sm text-slate-400 tabular-nums">{song.duration ?? ''}</span>
                 </div>
               </div>
             ))}
@@ -1368,33 +1369,33 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
         {/* 播放器 */}
         <div
           className="
-            hidden md:flex md:w-1/3 md:h-full md:flex-col bg-white/60
+            hidden md:flex md:w-1/3 md:h-full md:flex-col glass-card
           "
         >
           {/* 顶部控制栏 */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-200/70">
+          <div className="flex items-center justify-between p-4 border-b border-white/30">
             <div className="flex items-center">
               {coverNodeSmall}
-              <div>
-                <p className="font-bold text-lg text-slate-900">{currentSong?.name ?? '未选择'}</p>
-                <p className="text-slate-600">{currentSong?.artist ?? ''}</p>
+              <div className="min-w-0">
+                <p className="font-bold text-lg text-slate-900 truncate">{currentSong?.name ?? '未选择'}</p>
+                <p className="text-sm text-slate-500 truncate">{currentSong?.artist ?? ''}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 text-slate-600">
-              <button className="p-2 hover:text-slate-800 transition-colors">
+            <div className="flex items-center space-x-3 text-slate-500">
+              <button className="p-2 rounded-lg hover:text-rose-500 hover:bg-rose-50/60 transition-all">
                 <Heart size={20} />
               </button>
               <button
                 onClick={() => { if (currentSong) { void handleShowTrackInfo(currentSong); } }}
-                className="p-2 hover:text-slate-800 transition-colors disabled:opacity-40"
+                className="p-2 rounded-lg hover:text-slate-800 hover:bg-white/60 transition-all disabled:opacity-40"
                 disabled={!currentSong}
               >
                 <MoreVertical size={20} />
               </button>
               <button
                 onClick={() => { if (currentSong?.url) { window.open(currentSong.url, '_blank'); } }}
-                className="p-2 hover:text-slate-800 transition-colors disabled:opacity-50"
+                className="p-2 rounded-lg hover:text-sky-600 hover:bg-sky-50/60 transition-all disabled:opacity-50"
                 disabled={!currentSong?.url}
               >
                 <Share size={20} />
@@ -1412,9 +1413,9 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                       {coverNodeLarge}
 
                       <div className="text-left max-w-xs">
-                        <h2 className="text-2xl font-bold mb-2 text-slate-900">{currentSong?.name ?? '未选择'}</h2>
-                        <p className="text-lg text-slate-700 mb-1">{currentSong?.artist ?? ''}</p>
-                        {currentSong?.album ? <p className="text-sm text-slate-500">{currentSong.album}</p> : null}
+                        <h2 className="text-2xl font-bold mb-2 text-slate-900 tracking-tight">{currentSong?.name ?? '未选择'}</h2>
+                        <p className="text-lg text-slate-600 mb-1">{currentSong?.artist ?? ''}</p>
+                        {currentSong?.album ? <p className="text-sm text-slate-400">{currentSong.album}</p> : null}
                       </div>
                     </div>
                   </div>
@@ -1427,13 +1428,13 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                     } min-h-0`}
                   >
                     <div className={`flex items-center justify-between ${lyricsExpanded ? 'mb-3' : 'mb-2'}`}>
-                      <span className="text-sm font-semibold text-slate-600">歌词</span>
+                      <span className="text-sm font-semibold text-slate-500 uppercase tracking-wide">歌词</span>
                       <div className="flex items-center space-x-2">
                         {hasTranslationLyric && (
                           <button
                             type="button"
                             onClick={() => setShowTranslation((prev) => !prev)}
-                            className="text-xs px-2 py-1 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 transition-colors"
+                            className="text-xs px-2.5 py-1 rounded-lg border border-sky-300/50 text-sky-600 hover:bg-sky-50/60 transition-all"
                           >
                             {showTranslation ? '隐藏翻译' : '显示翻译'}
                           </button>
@@ -1441,7 +1442,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                         <button
                           type="button"
                           onClick={() => setLyricsExpanded((prev) => !prev)}
-                          className="text-xs px-2 py-1 rounded-md border border-slate-300 text-slate-600 hover:bg-white/70 transition-colors"
+                          className="text-xs px-2.5 py-1 rounded-lg border border-slate-300/50 text-slate-600 hover:bg-white/60 transition-all"
                         >
                           {lyricsExpanded ? '收起歌词' : '展开歌词'}
                         </button>
@@ -1450,7 +1451,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                     {lyricsExpanded ? (
                       <div
                         ref={lyricDesktopRef}
-                        className="flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-22rem)] md:max-h-[calc(100vh-20rem)] custom-scrollbar bg-white/70 border border-slate-200 rounded-xl p-4"
+                        className="flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-22rem)] md:max-h-[calc(100vh-20rem)] custom-scrollbar glass-card rounded-xl p-4"
                       >
                         {displayLyricLines.length > 0 ? (
                           displayLyricLines.map((line, idx) => {
@@ -1461,20 +1462,20 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                               <div
                                 key={key}
                                 data-lyric-key={`${currentSong?.id ?? 'unknown'}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${idx}`}`}
-                                className={`py-1 transition-colors flex items-start gap-3 ${isActive ? '' : ''}`}
+                                className={`py-1.5 transition-all duration-300 flex items-start gap-3 ${isActive ? 'scale-[1.02]' : ''}`}
                               >
                                 <div className="flex-1 min-w-0">
-                                  <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-600 font-bold text-lg opacity-100' : 'text-slate-700 text-base opacity-70'}`}>
+                                  <p className={`leading-relaxed transition-all duration-300 ease-out ${isActive ? 'text-transparent bg-gradient-to-r from-sky-500 to-indigo-500 bg-clip-text font-bold text-lg' : 'text-slate-600 text-base opacity-60'}`}>
                                     {line.original}
                                   </p>
                                   {line.translation ? (
-                                    <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-500 font-semibold text-base mt-0.5 opacity-100' : 'text-slate-500 text-sm mt-0.5 opacity-70'}`}>
+                                    <p className={`leading-relaxed transition-all duration-300 ease-out ${isActive ? 'text-sky-400 font-medium text-base mt-0.5' : 'text-slate-400 text-sm mt-0.5 opacity-60'}`}>
                                       {line.translation}
                                     </p>
                                   ) : null}
                                 </div>
                                 {hasTime ? (
-                                  <span className="text-xs text-slate-400 flex-shrink-0 pt-1 select-none">
+                                  <span className="text-xs text-slate-300 flex-shrink-0 pt-1 select-none tabular-nums">
                                     {formatTime(line.time)}
                                   </span>
                                 ) : null}
@@ -1486,18 +1487,18 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                         )}
                       </div>
                     ) : (
-                      <div className="bg-white/70 border border-slate-200 rounded-xl p-4">
+                      <div className="glass-card rounded-xl p-4">
                         {previewLyricLines.length > 0 ? (
                           previewLyricLines.map(({ index, line }) => {
                             const isActive = index === activeLyricIndex;
                             const key = `lyric-preview-combined-${index}`;
                             return (
-                              <div key={key} className="py-0.5">
-                                <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-600 font-semibold text-lg' : 'text-slate-600 text-sm'}`}>
+                              <div key={key} className="py-1">
+                                <p className={`leading-relaxed text-center transition-all duration-300 ${isActive ? 'text-transparent bg-gradient-to-r from-sky-500 to-indigo-500 bg-clip-text font-semibold text-lg' : 'text-slate-500 text-sm'}`}>
                                   {line.original}
                                 </p>
                                 {line.translation ? (
-                                  <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-500 font-medium text-base mt-0.5' : 'text-slate-500 text-xs mt-0.5'}`}>
+                                  <p className={`leading-relaxed text-center transition-all duration-300 ${isActive ? 'text-sky-400 font-medium text-base mt-0.5' : 'text-slate-400 text-xs mt-0.5'}`}>
                                     {line.translation}
                                   </p>
                                 ) : null}
@@ -1505,7 +1506,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                             );
                           })
                         ) : (
-                          <p className="text-sm text-slate-500">暂无歌词</p>
+                          <p className="text-sm text-slate-400 text-center">暂无歌词</p>
                         )}
                       </div>
                     )}
@@ -1515,17 +1516,17 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
 
               <div className={`w-full max-w-2xl ${lyricsExpanded ? 'mb-4 md:mb-6 mt-2 md:mt-4' : 'mb-4 md:mb-6'}`}>
                 <div
-                  className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden select-none touch-none"
+                  className="h-1.5 bg-slate-300/40 rounded-full cursor-pointer group overflow-visible select-none touch-none relative"
                   onMouseDown={handleProgressMouseDown}
                   onTouchStart={handleProgressTouchStart}
                   onTouchMove={handleProgressTouchMove}
                   onTouchEnd={handleProgressTouchEnd}
                 >
-                  <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full relative" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}>
-                    <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg" />
+                  <div className="h-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 rounded-full relative transition-[width] duration-200" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}>
+                    <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 -mr-1 w-3.5 h-3.5 bg-white rounded-full shadow-md ring-2 ring-sky-400 transition-opacity duration-200 ${isDraggingProgress ? 'opacity-100 scale-125' : 'opacity-0 group-hover:opacity-100'}`} />
                   </div>
                 </div>
-                <div className="flex justify-between text-sm text-slate-600 mt-2">
+                <div className="flex justify-between text-xs text-slate-400 mt-2 tabular-nums">
                   <span>{formatTime(isDraggingProgress ? (dragProgress / 100) * (duration || 0) : currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
@@ -1543,37 +1544,37 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                     }
                     void playSong(idx);
                   }}
-                  className="p-2 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"
+                  className={`p-2 rounded-xl transition-all duration-300 transform hover:scale-110 ${playbackMode === 'shuffle' ? 'text-sky-600 bg-sky-50/60' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'}`}
                 >
                   <Shuffle size={20} />
                 </button>
 
-                <button onClick={playPrevious} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110">
+                <button onClick={playPrevious} className="p-3 text-slate-500 hover:text-slate-900 transition-all duration-300 transform hover:scale-110">
                   <SkipBack size={24} />
                 </button>
 
                 <button
                   ref={desktopPlayBtnRef}
                   onClick={togglePlayPause}
-                  className={`p-4 rounded-full shadow-lg text-white transition-all duration-300 transform hover:scale-110 ${isDraggingProgress && isDragCancel ? 'bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-2xl scale-110' : 'bg-gradient-to-r from-sky-400 to-blue-500 hover:shadow-2xl'}`}
+                  className={`p-4 rounded-full shadow-lg text-white transition-all duration-300 transform hover:scale-110 ${isDraggingProgress && isDragCancel ? 'bg-gradient-to-r from-rose-500 to-red-600 shadow-glow scale-110' : 'bg-gradient-to-r from-sky-500 to-indigo-500 hover:shadow-glow'}`}
                 >
-                  {isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} />}
+                  {isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-0.5" />}
                 </button>
 
-                <button onClick={playNext} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110">
+                <button onClick={playNext} className="p-3 text-slate-500 hover:text-slate-900 transition-all duration-300 transform hover:scale-110">
                   <SkipForward size={24} />
                 </button>
 
                 <button
                   onClick={() => setPlaybackMode((m) => (m === 'order' ? 'single' : m === 'single' ? 'shuffle' : 'order'))}
-                  className={`p-2 transition-all duration-300 transform hover:scale-110 ${playbackMode === 'order' ? 'text-slate-600 hover:text-slate-900' : 'text-sky-600 ring-1 ring-sky-400 rounded-full'}`}
+                  className={`p-2 rounded-xl transition-all duration-300 transform hover:scale-110 ${playbackMode === 'order' ? 'text-slate-500 hover:text-slate-800 hover:bg-white/60' : 'text-sky-600 bg-sky-50/60'}`}
                 >
                   {playbackMode === 'single' ? <Repeat1 size={20} /> : playbackMode === 'shuffle' ? <Shuffle size={20} /> : <Repeat size={20} />}
                 </button>
               </div>
 
-              <div className="flex items-center justify-center space-x-4">
-                <Volume2 size={20} className="text-slate-600" />
+              <div className="flex items-center justify-center space-x-3">
+                <Volume2 size={18} className="text-slate-400" />
                 <input
                   type="range"
                   min="0"
@@ -1581,7 +1582,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                   step="0.01"
                   value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-32 h-1 bg-slate-300 rounded-full appearance-none cursor-pointer slider hover:bg-slate-400 transition-colors"
+                  className="w-32 h-1.5 bg-slate-300/40 rounded-full appearance-none cursor-pointer slider transition-colors"
                 />
               </div>
             </div>
@@ -1589,67 +1590,67 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
         </div>
         {/* 移动端：底部小播放器与半屏展开（带动画） */}
         <div
-          className={`md:hidden fixed bottom-0 left-0 right-0 h-20 z-30 bg-white/80 backdrop-blur border-t border-slate-200 flex items-center px-3 transform transition-transform duration-300 ease-in-out ${mobileExpanded ? 'translate-y-full pointer-events-none' : 'translate-y-0'}`}
+          className={`md:hidden fixed bottom-0 left-0 right-0 h-20 z-30 glass-card-strong border-t border-white/40 flex items-center px-3 transform transition-transform duration-300 ease-in-out ${mobileExpanded ? 'translate-y-full pointer-events-none' : 'translate-y-0'}`}
         >
           <div className="flex items-center flex-1 min-w-0" onClick={() => setMobileExpanded(true)}>
             {coverNodeSmall}
             <div className="min-w-0">
               <p className="font-semibold text-slate-900 truncate">{currentSong?.name ?? '未选择'}</p>
-              <p className="text-sm text-slate-600 truncate">{currentSong?.artist ?? ''}</p>
+              <p className="text-sm text-slate-500 truncate">{currentSong?.artist ?? ''}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 pl-3">
-            <button onClick={(e) => { e.stopPropagation(); playPrevious(); }} className="p-2 text-slate-600 hover:text-slate-900">
+          <div className="flex items-center space-x-1 pl-3">
+            <button onClick={(e) => { e.stopPropagation(); playPrevious(); }} className="p-2 text-slate-500 hover:text-slate-900 transition-colors">
               <SkipBack size={20} />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); togglePlayPause(); }} className="p-2 bg-gradient-to-r from-sky-400 to-blue-500 rounded-full text-white">
-              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+            <button onClick={(e) => { e.stopPropagation(); togglePlayPause(); }} className="p-2.5 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full text-white shadow-md transition-transform hover:scale-105">
+              {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="p-2 text-slate-600 hover:text-slate-900">
+            <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="p-2 text-slate-500 hover:text-slate-900 transition-colors">
               <SkipForward size={20} />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); setMobileExpanded(true); }} className="p-2 text-slate-600 hover:text-slate-900">
+            <button onClick={(e) => { e.stopPropagation(); setMobileExpanded(true); }} className="p-2 text-slate-500 hover:text-slate-900 transition-colors">
               <ChevronUp size={20} />
             </button>
           </div>
         </div>
         {mobileExpanded && (
           <div
-            className="md:hidden fixed inset-0 z-30 bg-slate-900/20"
+            className="md:hidden fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-sm"
             onClick={() => setMobileExpanded(false)}
             aria-hidden="true"
           />
         )}
         <div
-          className={`md:hidden fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur shadow-2xl flex flex-col overflow-hidden rounded-t-2xl transform transition-transform duration-300 ease-in-out ${mobileExpanded ? 'translate-y-0 h-[65vh]' : 'translate-y-full pointer-events-none h-[52vh]'}`}
+          className={`md:hidden fixed inset-x-0 bottom-0 z-40 glass-card-strong shadow-2xl flex flex-col overflow-hidden rounded-t-3xl transform transition-transform duration-300 ease-in-out ${mobileExpanded ? 'translate-y-0 h-[65vh]' : 'translate-y-full pointer-events-none h-[52vh]'}`}
         >
-          <div className={`flex items-center justify-between p-4 border-b border-slate-200/70 ${lyricsExpanded ? 'hidden' : ''}`}>
+          <div className={`flex items-center justify-between p-4 border-b border-white/30 ${lyricsExpanded ? 'hidden' : ''}`}>
             <div className="flex items-center">
               {coverNodeSmall}
-              <div>
-                <p className="font-bold text-lg text-slate-900">{currentSong?.name ?? '未选择'}</p>
-                <p className="text-slate-600">{currentSong?.artist ?? ''}</p>
+              <div className="min-w-0">
+                <p className="font-bold text-lg text-slate-900 truncate">{currentSong?.name ?? '未选择'}</p>
+                <p className="text-sm text-slate-500 truncate">{currentSong?.artist ?? ''}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 text-slate-600">
-              <button className="p-2 hover:text-slate-800 transition-colors">
+            <div className="flex items-center space-x-1 text-slate-500">
+              <button className="p-2 rounded-lg hover:text-rose-500 hover:bg-rose-50/60 transition-all">
                 <Heart size={20} />
               </button>
               <button
                 onClick={() => { if (currentSong) { void handleShowTrackInfo(currentSong); } }}
-                className="p-2 hover:text-slate-800 transition-colors disabled:opacity-40"
+                className="p-2 rounded-lg hover:text-slate-800 hover:bg-white/60 transition-all disabled:opacity-40"
                 disabled={!currentSong}
               >
                 <MoreVertical size={20} />
               </button>
               <button
                 onClick={() => { if (currentSong?.url) { window.open(currentSong.url, '_blank'); } }}
-                className="p-2 hover:text-slate-800 transition-colors disabled:opacity-50"
+                className="p-2 rounded-lg hover:text-sky-600 hover:bg-sky-50/60 transition-all disabled:opacity-50"
                 disabled={!currentSong?.url}
               >
                 <Share size={20} />
               </button>
-              <button onClick={() => setMobileExpanded(false)} className="p-2 hover:text-slate-800">
+              <button onClick={() => setMobileExpanded(false)} className="p-2 rounded-lg hover:text-slate-800 hover:bg-white/60 transition-all">
                 <ChevronDown size={20} />
               </button>
             </div>
@@ -1659,21 +1660,21 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
               {hasAnyLyric ? (
                 <div className={`w-full ${lyricsExpanded ? 'flex-1 flex flex-col' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-slate-600">歌词</span>
+                    <span className="text-sm font-semibold text-slate-500 uppercase tracking-wide">歌词</span>
                     <div className="flex items-center space-x-2">
                       {hasTranslationLyric && (
                         <button
                           type="button"
                           onClick={() => setShowTranslation((prev) => !prev)}
-                          className="text-xs px-2 py-1 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 transition-colors"
+                          className="text-xs px-2.5 py-1 rounded-lg border border-sky-300/50 text-sky-600 hover:bg-sky-50/60 transition-all"
                         >
-                          {showTranslation ? '查看原文' : '查看翻译'}
+                          {showTranslation ? '隐藏翻译' : '显示翻译'}
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => setLyricsExpanded((prev) => !prev)}
-                        className="text-xs px-2 py-1 rounded-md border border-slate-300 text-slate-600 hover:bg-white/70 transition-colors"
+                        className="text-xs px-2.5 py-1 rounded-lg border border-slate-300/50 text-slate-600 hover:bg-white/60 transition-all"
                       >
                         {lyricsExpanded ? '收起歌词' : '展开歌词'}
                       </button>
@@ -1682,7 +1683,7 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                   {lyricsExpanded ? (
                     <div
                       ref={lyricMobileRef}
-                      className="flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-24rem)] custom-scrollbar bg-white/70 border border-slate-200 rounded-xl p-3"
+                      className="flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-24rem)] custom-scrollbar glass-card rounded-xl p-3"
                     >
                       {displayLyricLines.length > 0 ? (
                         displayLyricLines.map((line, idx) => {
@@ -1693,20 +1694,20 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                             <div
                               key={key}
                               data-lyric-key={`${currentSong?.id ?? 'unknown'}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${idx}`}`}
-                              className="py-1 flex items-start gap-2"
+                              className={`py-1.5 flex items-start gap-2 transition-all duration-300 ${isActive ? 'scale-[1.02]' : ''}`}
                             >
                               <div className="flex-1 min-w-0">
-                                <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-600 font-bold text-base opacity-100' : 'text-slate-700 text-sm opacity-70'}`}>
+                                <p className={`leading-relaxed transition-all duration-300 ease-out ${isActive ? 'text-transparent bg-gradient-to-r from-sky-500 to-indigo-500 bg-clip-text font-bold text-base' : 'text-slate-600 text-sm opacity-60'}`}>
                                   {line.original}
                                 </p>
                                 {line.translation ? (
-                                  <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? 'text-sky-500 font-semibold text-sm mt-0.5 opacity-100' : 'text-slate-500 text-xs mt-0.5 opacity-70'}`}>
+                                  <p className={`leading-relaxed transition-all duration-300 ease-out ${isActive ? 'text-sky-400 font-semibold text-sm mt-0.5' : 'text-slate-400 text-xs mt-0.5 opacity-60'}`}>
                                     {line.translation}
                                   </p>
                                 ) : null}
                               </div>
                               {hasTime ? (
-                                <span className="text-[10px] text-slate-400 flex-shrink-0 pt-1 select-none">
+                                <span className="text-[10px] text-slate-300 flex-shrink-0 pt-1 select-none tabular-nums">
                                   {formatTime(line.time)}
                                 </span>
                               ) : null}
@@ -1718,18 +1719,18 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                       )}
                     </div>
                   ) : (
-                    <div className="bg-white/70 border border-slate-200 rounded-xl p-3">
+                    <div className="glass-card rounded-xl p-3">
                       {previewLyricLines.length > 0 ? (
                         previewLyricLines.map(({ index, line }) => {
                           const isActive = index === activeLyricIndex;
                           const key = `lyric-preview-mobile-combined-${index}`;
                           return (
-                            <div key={key} className="py-0.5">
-                              <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-600 font-semibold text-base' : 'text-slate-600 text-sm'}`}>
+                            <div key={key} className="py-1">
+                              <p className={`leading-relaxed text-center transition-all duration-300 ${isActive ? 'text-transparent bg-gradient-to-r from-sky-500 to-indigo-500 bg-clip-text font-semibold text-base' : 'text-slate-500 text-sm'}`}>
                                 {line.original}
                               </p>
                               {line.translation ? (
-                                <p className={`leading-relaxed text-center transition-all ${isActive ? 'text-sky-500 font-medium text-sm mt-0.5' : 'text-slate-500 text-xs mt-0.5'}`}>
+                                <p className={`leading-relaxed text-center transition-all duration-300 ${isActive ? 'text-sky-400 font-medium text-sm mt-0.5' : 'text-slate-400 text-xs mt-0.5'}`}>
                                   {line.translation}
                                 </p>
                               ) : null}
@@ -1737,31 +1738,31 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                           );
                         })
                       ) : (
-                        <p className="text-sm text-slate-500">暂无歌词</p>
+                        <p className="text-sm text-slate-400 text-center">暂无歌词</p>
                       )}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center">
-                  <p className="text-sm text-slate-500">暂无歌词</p>
+                  <p className="text-sm text-slate-400">暂无歌词</p>
                 </div>
               )}
             </div>
 
             <div className="mt-4">
               <div
-                className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden select-none touch-none"
+                className="h-1.5 bg-slate-300/40 rounded-full cursor-pointer group overflow-visible select-none touch-none relative"
                 onMouseDown={handleProgressMouseDown}
                 onTouchStart={handleProgressTouchStart}
                 onTouchMove={handleProgressTouchMove}
                 onTouchEnd={handleProgressTouchEnd}
               >
-                <div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full relative" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}>
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg" />
+                <div className="h-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 rounded-full relative transition-[width] duration-200" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}>
+                  <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 -mr-1 w-3.5 h-3.5 bg-white rounded-full shadow-md ring-2 ring-sky-400 transition-opacity duration-200 ${isDraggingProgress ? 'opacity-100 scale-125' : 'opacity-0 group-hover:opacity-100'}`} />
                 </div>
               </div>
-              <div className="flex justify-between text-xs text-slate-600 mt-2">
+              <div className="flex justify-between text-xs text-slate-400 mt-2 tabular-nums">
                 <span>{formatTime(isDraggingProgress ? (dragProgress / 100) * (duration || 0) : currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
@@ -1779,33 +1780,33 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                   }
                   void playSong(idx);
                 }}
-                className="p-2 text-slate-600 hover:text-slate-900"
+                className={`p-2 rounded-xl transition-all ${playbackMode === 'shuffle' ? 'text-sky-600 bg-sky-50/60' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 <Shuffle size={20} />
               </button>
-              <button onClick={playPrevious} className="p-2 text-slate-600 hover:text-slate-900">
+              <button onClick={playPrevious} className="p-2 text-slate-500 hover:text-slate-900 transition-colors">
                 <SkipBack size={24} />
               </button>
               <button
                 ref={mobilePlayBtnRef}
                 onClick={togglePlayPause}
-                className={`p-3 rounded-full text-white transition-all duration-200 ${isDraggingProgress && isDragCancel ? 'bg-gradient-to-r from-red-500 to-rose-600 scale-110' : 'bg-gradient-to-r from-sky-400 to-blue-500'}`}
+                className={`p-3 rounded-full text-white shadow-lg transition-all duration-200 ${isDraggingProgress && isDragCancel ? 'bg-gradient-to-r from-rose-500 to-red-600 scale-110' : 'bg-gradient-to-r from-sky-500 to-indigo-500 hover:scale-105'}`}
               >
-                {isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} />}
+                {isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-0.5" />}
               </button>
-              <button onClick={playNext} className="p-2 text-slate-600 hover:text-slate-900">
+              <button onClick={playNext} className="p-2 text-slate-500 hover:text-slate-900 transition-colors">
                 <SkipForward size={24} />
               </button>
               <button
                 onClick={() => setPlaybackMode((m) => (m === 'order' ? 'single' : m === 'single' ? 'shuffle' : 'order'))}
-                className={`p-2 ${playbackMode === 'order' ? 'text-slate-600 hover:text-slate-900' : 'text-sky-600 ring-1 ring-sky-400 rounded-full'}`}
+                className={`p-2 rounded-xl transition-all ${playbackMode === 'order' ? 'text-slate-500 hover:text-slate-900' : 'text-sky-600 bg-sky-50/60'}`}
               >
                 {playbackMode === 'single' ? <Repeat1 size={20} /> : playbackMode === 'shuffle' ? <Shuffle size={20} /> : <Repeat size={20} />}
               </button>
             </div>
 
             <div className="flex items-center justify-center space-x-3 mt-3">
-              <Volume2 size={20} className="text-slate-600" />
+              <Volume2 size={18} className="text-slate-400" />
               <input
                 type="range"
                 min="0"
@@ -1813,67 +1814,67 @@ const [infoModalError, setInfoModalError] = useState<string | null>(null);
                 step="0.01"
                 value={volume}
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-32 h-1 bg-slate-300 rounded-full appearance-none cursor-pointer slider hover:bg-slate-400 transition-colors"
+                className="w-32 h-1.5 bg-slate-300/40 rounded-full appearance-none cursor-pointer slider transition-colors"
               />
             </div>
           </div>
         </div>
       {infoModalVisible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4" onClick={handleCloseInfoModal}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4 animate-fade-in" onClick={handleCloseInfoModal}>
           <div
-            className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="relative w-full max-w-md rounded-2xl glass-card-strong p-6 shadow-2xl animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={handleCloseInfoModal}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-white/60"
             >
-              关闭
+              <X size={20} />
             </button>
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">歌曲信息</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-4">歌曲信息</h3>
             {infoModalLoading ? (
               <div className="flex items-center justify-center py-10">
                 <div className="w-6 h-6 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin" />
               </div>
             ) : infoModalError ? (
               <div className="space-y-4 text-sm text-slate-600">
-                <p>{infoModalError}</p>
+                <p className="bg-rose-50/60 px-3 py-2 rounded-lg text-rose-600">{infoModalError}</p>
                 <div className="flex items-center space-x-3">
                   <button
                     type="button"
                     onClick={handleRetryInfo}
-                    className="px-3 py-1.5 rounded-md bg-sky-500 text-white text-xs hover:bg-sky-600 transition-colors"
+                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-xs font-medium hover:shadow-md transition-all"
                   >
                     重试
                   </button>
                   <button
                     type="button"
                     onClick={handleCloseInfoModal}
-                    className="px-3 py-1.5 rounded-md border border-slate-300 text-xs text-slate-600 hover:bg-white"
+                    className="px-4 py-1.5 rounded-lg border border-slate-300/50 text-xs text-slate-600 hover:bg-white/60 transition-all"
                   >
                     关闭
                   </button>
                 </div>
               </div>
             ) : infoTrack ? (
-              <div className="space-y-3 text-sm text-slate-700">
-                <p>歌名：{infoTrack.name}</p>
-                <p>歌手：{infoTrack.artist || '未知'}</p>
-                <p>专辑：{infoTrack.album || '未知'}</p>
-                <p>时长：{durationLabel}</p>
-                <p>来源：{infoSourceLabel}{infoSourceLabel && infoSourceLabel !== infoTrack.source ? `（${infoTrack.source}）` : ''}</p>
-                <p>歌曲ID：{infoTrack.trackId ?? '未知'}</p>
-                <p>文件大小：{fileSizeLabel}</p>
-                <p>播放音质：{bitrateLabel}</p>
-                <div className="space-y-1">
-                  <p>歌词链接：{lyricLink ? (<a className="text-sky-600 hover:underline" href={lyricLink} target="_blank" rel="noreferrer">点击下载</a>) : '暂无'}</p>
-                  <p>封面链接：{coverLink ? (<a className="text-sky-600 hover:underline" href={coverLink} target="_blank" rel="noreferrer">查看封面</a>) : '暂无'}</p>
-                  <p>歌曲链接：{audioLink ? (<a className="text-sky-600 hover:underline break-all" href={audioLink} target="_blank" rel="noreferrer">{audioLink}</a>) : '暂无'}</p>
+              <div className="space-y-2.5 text-sm text-slate-700">
+                <div className="flex justify-between"><span className="text-slate-400">歌名</span><span className="font-medium">{infoTrack.name}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">歌手</span><span className="font-medium">{infoTrack.artist || '未知'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">专辑</span><span className="font-medium">{infoTrack.album || '未知'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">时长</span><span className="font-medium">{durationLabel}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">来源</span><span className="font-medium">{infoSourceLabel}{infoSourceLabel && infoSourceLabel !== infoTrack.source ? `（${infoTrack.source}）` : ''}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">歌曲ID</span><span className="font-medium tabular-nums">{infoTrack.trackId ?? '未知'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">文件大小</span><span className="font-medium">{fileSizeLabel}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">播放音质</span><span className="font-medium">{bitrateLabel}</span></div>
+                <div className="border-t border-white/30 pt-3 mt-3 space-y-1.5">
+                  <p className="flex items-center justify-between"><span className="text-slate-400">歌词链接</span>{lyricLink ? (<a className="text-sky-600 hover:underline font-medium" href={lyricLink} target="_blank" rel="noreferrer">点击下载</a>) : <span className="text-slate-400">暂无</span>}</p>
+                  <p className="flex items-center justify-between"><span className="text-slate-400">封面链接</span>{coverLink ? (<a className="text-sky-600 hover:underline font-medium" href={coverLink} target="_blank" rel="noreferrer">查看封面</a>) : <span className="text-slate-400">暂无</span>}</p>
+                  <p className="flex items-start justify-between gap-2"><span className="text-slate-400 shrink-0">歌曲链接</span>{audioLink ? (<a className="text-sky-600 hover:underline break-all text-right font-medium" href={audioLink} target="_blank" rel="noreferrer">{audioLink}</a>) : <span className="text-slate-400">暂无</span>}</p>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-600">暂无歌曲信息</p>
+              <p className="text-sm text-slate-400">暂无歌曲信息</p>
             )}
           </div>
         </div>
