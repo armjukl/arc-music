@@ -1,4 +1,5 @@
 import type React from "react";
+import clsx from "clsx";
 import { Heart, MoreVertical, Pause, Play, Repeat, Repeat1, Share, Shuffle, SkipBack, SkipForward, Volume2, X } from "lucide-react";
 import type { CombinedLyricLine, PlaybackMode, Track } from "./types";
 import { formatTime } from "./utils";
@@ -14,7 +15,7 @@ type DesktopPlayerProps = {
   activeLyricIndex: number;
   hasTranslationLyric: boolean;
   showTranslation: boolean;
-  lyricContainerRef: React.RefObject<HTMLDivElement | null>;
+  lyricContainerRef: React.RefObject<HTMLDivElement>;
   progress: number;
   dragProgress: number;
   isDraggingProgress: boolean;
@@ -22,7 +23,7 @@ type DesktopPlayerProps = {
   currentTime: number;
   duration: number;
   playbackMode: PlaybackMode;
-  playButtonRef: React.RefObject<HTMLButtonElement | null>;
+  playButtonRef: React.RefObject<HTMLButtonElement>;
   volume: number;
   onShowTrackInfo: (track: Track) => void;
   onToggleTranslation: () => void;
@@ -176,8 +177,8 @@ export function DesktopPlayer({
                 </div>
               </div>
             )}
-            {hasAnyLyric && <div className={`w-full max-w-2xl ${lyricsExpanded ? "flex-1 flex flex-col mt-2 md:mt-4 mb-4 md:mb-6" : "mb-4 md:mb-6"} min-h-0`}>
-              <div className={`flex items-center justify-between ${lyricsExpanded ? "mb-3" : "mb-2"}`}>
+            {hasAnyLyric && <div className={clsx("w-full max-w-2xl min-h-0", lyricsExpanded ? "flex-1 flex flex-col mt-2 md:mt-4 mb-4 md:mb-6" : "mb-4 md:mb-6")}>
+              <div className={clsx("flex items-center justify-between", lyricsExpanded ? "mb-3" : "mb-2")}>
                 <span className="text-sm font-semibold text-slate-600">歌词</span>
                 <div className="flex items-center space-x-2">
                   {hasTranslationLyric && <button type="button" onClick={onToggleTranslation} className="text-xs px-2 py-1 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 transition-colors">{showTranslation ? "隐藏翻译" : "显示翻译"}</button>}
@@ -187,15 +188,15 @@ export function DesktopPlayer({
               {lyricsExpanded ? <div ref={lyricContainerRef} className="flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-22rem)] md:max-h-[calc(100vh-20rem)] custom-scrollbar bg-white/70 border border-slate-200 rounded-xl p-4">
                 {displayLyricLines.length > 0 ? displayLyricLines.map((line, index) => {
                   const isActive = index === activeLyricIndex;
-                  return <div key={`lyric-desktop-combined-${index}`} data-lyric-key={`${currentSong?.id ?? "unknown"}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${index}`}`} className="py-1 transition-colors flex items-start gap-3"><div className="flex-1 min-w-0"><p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? "text-sky-600 font-bold text-lg opacity-100" : "text-slate-700 text-base opacity-70"}`}>{line.original}</p>{line.translation ? <p className={`leading-relaxed transition-all duration-200 ease-out ${isActive ? "text-sky-500 font-semibold text-base mt-0.5 opacity-100" : "text-slate-500 text-sm mt-0.5 opacity-70"}`}>{line.translation}</p> : null}</div>{Number.isFinite(line.time) ? <span className="text-xs text-slate-400 flex-shrink-0 pt-1 select-none">{formatTime(line.time)}</span> : null}</div>;
+                  return <div key={`lyric-desktop-combined-${index}`} data-lyric-key={`${currentSong?.id ?? "unknown"}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${index}`}`} className="py-1 transition-colors flex items-start gap-3"><div className="flex-1 min-w-0"><p className={clsx("leading-relaxed transition-all duration-200 ease-out", isActive ? "text-sky-600 font-bold text-lg opacity-100" : "text-slate-700 text-base opacity-70")}>{line.original}</p>{line.translation ? <p className={clsx("leading-relaxed transition-all duration-200 ease-out", isActive ? "text-sky-500 font-semibold text-base mt-0.5 opacity-100" : "text-slate-500 text-sm mt-0.5 opacity-70")}>{line.translation}</p> : null}</div>{Number.isFinite(line.time) ? <span className="text-xs text-slate-400 flex-shrink-0 pt-1 select-none">{formatTime(line.time)}</span> : null}</div>;
                 }) : <p className="text-sm text-slate-500">暂无歌词</p>}
-              </div> : <div className="bg-white/70 border border-slate-200 rounded-xl p-4">{previewLyricLines.length > 0 ? previewLyricLines.map(({ index, line }) => { const isActive = index === activeLyricIndex; return <div key={`lyric-preview-combined-${index}`} className="py-0.5"><p className={`leading-relaxed text-center transition-all ${isActive ? "text-sky-600 font-semibold text-lg" : "text-slate-600 text-sm"}`}>{line.original}</p>{line.translation ? <p className={`leading-relaxed text-center transition-all ${isActive ? "text-sky-500 font-medium text-base mt-0.5" : "text-slate-500 text-xs mt-0.5"}`}>{line.translation}</p> : null}</div>; }) : <p className="text-sm text-slate-500">暂无歌词</p>}</div>}
+              </div> : <div className="bg-white/70 border border-slate-200 rounded-xl p-4">{previewLyricLines.length > 0 ? previewLyricLines.map(({ index, line }) => { const isActive = index === activeLyricIndex; return <div key={`lyric-preview-combined-${index}`} className="py-0.5"><p className={clsx("leading-relaxed text-center transition-all", isActive ? "text-sky-600 font-semibold text-lg" : "text-slate-600 text-sm")}>{line.original}</p>{line.translation ? <p className={clsx("leading-relaxed text-center transition-all", isActive ? "text-sky-500 font-medium text-base mt-0.5" : "text-slate-500 text-xs mt-0.5")}>{line.translation}</p> : null}</div>; }) : <p className="text-sm text-slate-500">暂无歌词</p>}</div>}
             </div>}
           </div>
-          <div className={`w-full max-w-2xl ${lyricsExpanded ? "mb-4 md:mb-6 mt-2 md:mt-4" : "mb-4 md:mb-6"}`}>
+          <div className={clsx("w-full max-w-2xl", lyricsExpanded ? "mb-4 md:mb-6 mt-2 md:mt-4" : "mb-4 md:mb-6")}>
             <div className="h-2 bg-slate-300 rounded-full cursor-pointer group overflow-hidden select-none touch-none" onMouseDown={onProgressMouseDown} onTouchStart={onProgressTouchStart} onTouchMove={onProgressTouchMove} onTouchEnd={onProgressTouchEnd}><div className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full relative" style={{ width: `${isDraggingProgress ? dragProgress : progress}%` }}><div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg" /></div></div><div className="flex justify-between text-sm text-slate-600 mt-2"><span>{formatTime(isDraggingProgress ? (dragProgress / 100) * (duration || 0) : currentTime)}</span><span>{formatTime(duration)}</span></div>
           </div>
-          <div className={`flex items-center justify-center space-x-6 ${lyricsExpanded ? "mb-3 md:mb-5" : "mb-2 md:mb-6"}`}><button onClick={onShuffle} className="p-2 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"><Shuffle size={20} /></button><button onClick={onPrevious} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"><SkipBack size={24} /></button><button ref={playButtonRef} onClick={onTogglePlayPause} className={`p-4 rounded-full shadow-lg text-white transition-all duration-300 transform hover:scale-110 ${isDraggingProgress && isDragCancel ? "bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-2xl scale-110" : "bg-gradient-to-r from-sky-400 to-blue-500 hover:shadow-2xl"}`}>{isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} />}</button><button onClick={onNext} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"><SkipForward size={24} /></button><button onClick={onCyclePlaybackMode} className={`p-2 transition-all duration-300 transform hover:scale-110 ${playbackMode === "order" ? "text-slate-600 hover:text-slate-900" : "text-sky-600 ring-1 ring-sky-400 rounded-full"}`}>{playbackMode === "single" ? <Repeat1 size={20} /> : playbackMode === "shuffle" ? <Shuffle size={20} /> : <Repeat size={20} />}</button></div>
+          <div className={clsx("flex items-center justify-center space-x-6", lyricsExpanded ? "mb-3 md:mb-5" : "mb-2 md:mb-6")}><button onClick={onShuffle} className="p-2 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"><Shuffle size={20} /></button><button onClick={onPrevious} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"><SkipBack size={24} /></button><button ref={playButtonRef} onClick={onTogglePlayPause} className={clsx("p-4 rounded-full shadow-lg text-white transition-all duration-300 transform hover:scale-110", isDraggingProgress && isDragCancel ? "bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-2xl scale-110" : "bg-gradient-to-r from-sky-400 to-blue-500 hover:shadow-2xl")}>{isDraggingProgress && isDragCancel ? <X size={24} /> : isPlaying ? <Pause size={24} /> : <Play size={24} />}</button><button onClick={onNext} className="p-3 text-slate-600 hover:text-slate-900 transition-all duration-300 transform hover:scale-110"><SkipForward size={24} /></button><button onClick={onCyclePlaybackMode} className={clsx("p-2 transition-all duration-300 transform hover:scale-110", playbackMode === "order" ? "text-slate-600 hover:text-slate-900" : "text-sky-600 ring-1 ring-sky-400 rounded-full")}>{playbackMode === "single" ? <Repeat1 size={20} /> : playbackMode === "shuffle" ? <Shuffle size={20} /> : <Repeat size={20} />}</button></div>
           <div className="flex items-center justify-center space-x-4"><Volume2 size={20} className="text-slate-600" /><input type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => onVolumeChange(Number.parseFloat(event.target.value))} className="w-32 h-1 bg-slate-300 rounded-full appearance-none cursor-pointer slider hover:bg-slate-400 transition-colors" /></div>
         </div>
       </div>

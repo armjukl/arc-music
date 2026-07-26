@@ -8,18 +8,18 @@
 
 ### 1. 组件架构
 
-- [ ] **MusicPlayer.tsx 拆分** — 1741 行巨型组件，建议拆成 8-10 个独立组件（SearchBar、LyricsDisplay、PlaybackControls、ProgressBar、VolumeControl、TrackList、TrackInfoModal、DesktopPlayer、MobilePlayer、MobileExpandedPanel）
-- [ ] **桌面/移动端 UI 重复** — 歌词、播放控制、进度条、音量控制在桌面端和移动端几乎完全重复，应抽为可复用组件
-- [ ] **条件类名管理** — `clsx` 已在依赖中但从未使用，大量 3-5 行的条件类名字符串拼接应改用 `clsx` 或 `cn` 工具函数
+- [x] **MusicPlayer.tsx 拆分** — 已拆出 LibraryPanel、DesktopPlayer、MobilePlayer、TrackInfoModal、SearchBar、TrackList（桌面/移动端播放器按需求保持现状，不再细拆）
+- [ ] **桌面/移动端 UI 重复** — 按需求保留现状，不拆
+- [x] **条件类名管理** — 所有条件类名已改用 `clsx`
 
 ### 2. 依赖问题
 
-- [ ] **`@types/react: ^19` 与 React 18 不匹配** — 改为 `"@types/react": "^18"` 和 `"@types/react-dom": "^18"`
-- [ ] **`@tailwindcss/postcss: ^4` 与 `tailwindcss: ^3` 冲突** — Tailwind v3 不需要 `@tailwindcss/postcss`（由 `tailwindcss` 包直接提供 PostCSS 插件），删除此依赖
-- [ ] **依赖重复** — `@types/howler` 和 `howler` 同时出现在 `dependencies` 和 `devDependencies` 中，`@types/*` 应仅在 `devDependencies`
-- [ ] **`lucide-react` 版本较旧** — ^0.263.1 当前可能已到 v0.400+，可升级
-- [ ] **`cssnano` 未启用** — 在 `devDependencies` 中但 `postcss.config.js` 未配置，要么删除要么在生产环境启用
-- [ ] **`package.json` 中存在空行** — 行 19-21、36-38 空白行，格式不规范
+- [x] **`@types/react: ^19` 与 React 18 不匹配** — 已改为 `"@types/react": "^18"` 和 `"@types/react-dom": "^18"`
+- [x] **`@tailwindcss/postcss: ^4` 与 `tailwindcss: ^3` 冲突** — 已删除此依赖
+- [x] **依赖重复** — `howler` 仅保留在 `dependencies`，`@types/howler` 仅保留在 `devDependencies`
+- [x] **`lucide-react` 版本较旧** — 已升级到 ^0.525.0
+- [x] **`cssnano` 未启用** — 已删除（Next.js 生产构建自带 CSS 压缩，无需 cssnano）
+- [x] **`package.json` 中存在空行** — 已清理
 
 ### 3. 代码质量
 
@@ -30,9 +30,9 @@
 
 ### 4. 类型定义
 
-- [ ] **`LocalTrack.bitrate` 与 `BITRATE_OPTIONS` 类型重复** — 都硬编码了 `128 | 192 | 320 | 740 | 999`，应从 `BITRATE_OPTIONS` 派生共享类型
-- [ ] **`PlaybackMode` 定义在组件函数内部** — 应移到组件外部或独立的类型文件中
-- [ ] **`LyricLine` 和 `CombinedLyricLine` 闭包在组件中** — 应移到独立的 `.ts` 文件
+- [x] **`LocalTrack.bitrate` 与 `BITRATE_OPTIONS` 类型重复** — `BITRATE_OPTIONS` 统一定义在 `data/localTracks.ts`，`BitrateOption` 由 `(typeof BITRATE_OPTIONS)[number]` 派生，各处引用同一来源
+- [x] **`PlaybackMode` 定义在组件函数内部** — 已移到 `components/player/types.ts`
+- [x] **`LyricLine` 和 `CombinedLyricLine` 闭包在组件中** — 已移到 `components/player/types.ts`
 
 ---
 
@@ -40,9 +40,9 @@
 
 ### 5. 死代码清理
 
-- [ ] **删除 `data/localTracksold.ts`** — 完全未被引用，与 `localTracks.ts` 内容重复
-- [ ] **`pages/api/music.ts` 没有实际用途** — 只返回 `LOCAL_TRACKS` 的 JSON，而组件直接 import 了 `../data/localTracks`，此 API 路由未被使用或应充实为 BFF
-- [ ] **删除注释掉的代码** — 组件内行 ~925-937 有一段被注释掉的 `useEffect`
+- [x] **删除 `data/localTracksold.ts`** — 已删除（验证全项目无引用）
+- [x] **`pages/api/music.ts` 没有实际用途** — 已删除（无任何代码请求 `/api/music`；若日后做 BFF 限流可重建）
+- [x] **删除注释掉的代码** — 已删除组件内被注释掉的 `useEffect`
 
 ### 6. 状态管理
 

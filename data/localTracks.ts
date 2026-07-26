@@ -2,6 +2,10 @@ import type { MusicApiId } from '../api/types';
 
 export type MusicSource = 'netease' | 'kuwo' | 'joox';
 
+export const BITRATE_OPTIONS = [128, 192, 320, 740, 999] as const;
+
+export type BitrateOption = (typeof BITRATE_OPTIONS)[number];
+
 export type LocalTrack = {
   id: string;
   name: string;
@@ -14,7 +18,7 @@ export type LocalTrack = {
   trackId?: string;
   picId?: string;
   lyricId?: string;
-  bitrate?: 128 | 192 | 320 | 740 | 999;
+  bitrate?: BitrateOption;
 };
 
 export const LOCAL_TRACKS: LocalTrack[] = [

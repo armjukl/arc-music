@@ -8,7 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import { Howl } from "howler";
-import { LOCAL_TRACKS, MusicSource } from "../data/localTracks";
+import { BITRATE_OPTIONS, LOCAL_TRACKS, MusicSource } from "../data/localTracks";
 import { DEFAULT_MUSIC_API_ID, getMusicApi, MUSIC_APIS } from "../api";
 import type { MusicApiId } from "../api";
 import { TrackInfoModal } from "./player/TrackInfoModal";
@@ -18,7 +18,9 @@ import { MobilePlayer } from "./player/MobilePlayer";
 import type {
   BitrateOption,
   CombinedLyricLine,
+  FavoriteTrack,
   LyricLine,
+  PlaybackHistoryTrack,
   PlaybackMode,
   Track,
 } from "./player/types";
@@ -31,7 +33,6 @@ import {
 
 const DEFAULT_SEARCH_COUNT = 8;
 const DEFAULT_COVER_SIZE = "300";
-const BITRATE_OPTIONS = [128, 192, 320, 740, 999] as const;
 
 const AVAILABLE_SOURCES: { value: MusicSource; label: string }[] = [
   { value: "netease", label: "网易云" },
@@ -40,6 +41,10 @@ const AVAILABLE_SOURCES: { value: MusicSource; label: string }[] = [
 ];
 
 const DEFAULT_SOURCE: MusicSource = "netease";
+const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
+const FAVORITES_STORAGE_KEY = "arc-music-favorites";
+const MAX_PLAYBACK_HISTORY = 50;
+const MAX_FAVORITES = 50;
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map((track) =>
   createTrack(track, DEFAULT_MUSIC_API_ID),
 );
@@ -47,6 +52,24 @@ const INITIAL_SOURCE_TRACKS: Track[] = INITIAL_TRACKS.filter(
   (track) =>
     track.apiId === DEFAULT_MUSIC_API_ID && track.source === DEFAULT_SOURCE,
 );
+
+const toPlaybackHistoryTrack = (track: Track): PlaybackHistoryTrack => ({
+  id: track.id,
+  name: track.name,
+  artist: track.artist,
+  album: track.album,
+  duration: track.duration,
+  apiId: track.apiId,
+  source: track.source,
+  keyword: track.keyword,
+  trackId: track.trackId,
+  picId: track.picId,
+  lyricId: track.lyricId,
+  bitrate: track.bitrate,
+  cover: track.cover,
+});
+
+const toFavoriteTrack = (track: Track): FavoriteTrack => toPlaybackHistoryTrack(track);
 
 const MusicPlayer = () => {
   // 播放器状态
@@ -99,6 +122,11 @@ const MusicPlayer = () => {
   const [infoModalTrack, setInfoModalTrack] = useState<Track | null>(null);
   const [infoModalLoading, setInfoModalLoading] = useState(false);
   const [infoModalError, setInfoModalError] = useState<string | null>(null);
+  const [playbackHistory, setPlaybackHistory] = useState<PlaybackHistoryTrack[]>([]);
+  const [showingPlaybackHistory, setShowingPlaybackHistory] = useState(false);
+  const [favorites, setFavorites] = useState<FavoriteTrack[]>([]);
+  const [showingFavorites, setShowingFavorites] = useState(false);
+  const [pendingHistoryIndex, setPendingHistoryIndex] = useState<number | null>(null);
 
   const soundRef = useRef<Howl | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -112,6 +140,54 @@ const MusicPlayer = () => {
 
   const currentSong =
     currentSongIndex >= 0 ? musicList[currentSongIndex] : undefined;
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PLAYBACK_HISTORY_STORAGE_KEY);
+      if (!stored) return;
+      const parsed: unknown = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setPlaybackHistory(
+          parsed
+            .filter(
+              (item): item is PlaybackHistoryTrack =>
+                typeof item === "object" &&
+                item !== null &&
+                typeof (item as PlaybackHistoryTrack).id === "string" &&
+                typeof (item as PlaybackHistoryTrack).name === "string",
+            )
+            .map((item) => toPlaybackHistoryTrack(item as Track))
+            .slice(0, MAX_PLAYBACK_HISTORY),
+        );
+      }
+    } catch {
+      window.localStorage.removeItem(PLAYBACK_HISTORY_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
+      if (!stored) return;
+      const parsed: unknown = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setFavorites(
+          parsed
+            .filter(
+              (item): item is FavoriteTrack =>
+                typeof item === "object" &&
+                item !== null &&
+                typeof (item as FavoriteTrack).id === "string" &&
+                typeof (item as FavoriteTrack).name === "string",
+            )
+            .map((item) => toFavoriteTrack(item as Track))
+            .slice(0, MAX_FAVORITES),
+        );
+      }
+    } catch {
+      window.localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     setCoverUrl(currentSong?.cover ?? null);
@@ -304,6 +380,26 @@ const MusicPlayer = () => {
     );
   }, []);
 
+  const recordPlaybackHistory = useCallback((track: Track) => {
+    const historyTrack = toPlaybackHistoryTrack(track);
+
+    setPlaybackHistory((previous) => {
+      const next = [
+        historyTrack,
+        ...previous.filter(
+          (item) => !(item.id === historyTrack.id && item.apiId === historyTrack.apiId),
+        ),
+      ].slice(0, MAX_PLAYBACK_HISTORY);
+
+      try {
+        window.localStorage.setItem(PLAYBACK_HISTORY_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore storage quota and privacy-mode failures without interrupting playback.
+      }
+      return next;
+    });
+  }, []);
+
   const ensureTrackResolved = useCallback(
     async (track: Track, desiredBitrate: BitrateOption): Promise<Track> => {
       if (track.url && track.bitrate === desiredBitrate) {
@@ -478,6 +574,8 @@ const MusicPlayer = () => {
           return;
         }
 
+        recordPlaybackHistory(resolvedTrack);
+
         if (soundRef.current) {
           soundRef.current.unload();
           soundRef.current = null;
@@ -507,7 +605,151 @@ const MusicPlayer = () => {
       loadingTrackIndex,
       selectedBitrate,
       updateTrackInStates,
+      recordPlaybackHistory,
     ],
+  );
+
+  useEffect(() => {
+    if (pendingHistoryIndex === null) return;
+    const track = musicList[pendingHistoryIndex];
+    if (!track) return;
+    if (
+      selectedApiId !== track.apiId ||
+      selectedSource !== track.source ||
+      selectedBitrate !== track.bitrate
+    ) return;
+    setPendingHistoryIndex(null);
+    void playSong(pendingHistoryIndex);
+  }, [
+    musicList,
+    pendingHistoryIndex,
+    playSong,
+    selectedApiId,
+    selectedBitrate,
+    selectedSource,
+  ]);
+
+  const handlePlayHistoryTrack = useCallback(
+    (historyTrack: PlaybackHistoryTrack, index: number) => {
+      const bitrate = historyTrack.bitrate ?? selectedBitrate;
+      const tracks: Track[] = playbackHistory.map((item) => ({
+        ...item,
+        bitrate: item.bitrate ?? bitrate,
+        url: undefined,
+        lyric: null,
+        tLyric: null,
+        fileSizeKb: null,
+      }));
+      const track = tracks[index];
+      if (!track) return;
+
+      setSelectedApiId(track.apiId);
+      setSelectedSource(track.source);
+      setSelectedBitrate(bitrate);
+      setAllTracks(tracks);
+      setMusicList(tracks);
+      setCurrentSongIndex(-1);
+      setPendingHistoryIndex(index);
+    },
+    [playbackHistory, selectedBitrate],
+  );
+
+  const handlePlayFavoriteTrack = useCallback(
+    (favorite: FavoriteTrack, index: number) => {
+      const bitrate = favorite.bitrate ?? selectedBitrate;
+      const tracks: Track[] = favorites.map((item) => ({
+        ...item,
+        bitrate: item.bitrate ?? bitrate,
+        url: undefined,
+        lyric: null,
+        tLyric: null,
+        fileSizeKb: null,
+      }));
+      const track = tracks[index];
+      if (!track) return;
+
+      setSelectedApiId(track.apiId);
+      setSelectedSource(track.source);
+      setSelectedBitrate(bitrate);
+      setAllTracks(tracks);
+      setMusicList(tracks);
+      setCurrentSongIndex(-1);
+      setPendingHistoryIndex(index);
+    },
+    [favorites, selectedBitrate],
+  );
+
+  const handleToggleFavorite = useCallback((track: Track) => {
+    const favorite = toFavoriteTrack(track);
+    setFavorites((previous) => {
+      const exists = previous.some(
+        (item) => item.id === favorite.id && item.apiId === favorite.apiId,
+      );
+      // Adding preserves the existing user-defined order; playback never changes it.
+      const next = exists
+        ? previous.filter(
+            (item) => !(item.id === favorite.id && item.apiId === favorite.apiId),
+          )
+        : [...previous, favorite].slice(0, MAX_FAVORITES);
+      try {
+        window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the in-memory list usable if storage is unavailable.
+      }
+      return next;
+    });
+  }, []);
+
+  const handleReorderFavorites = useCallback((fromIndex: number, toIndex: number) => {
+    setFavorites((previous) => {
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= previous.length ||
+        toIndex >= previous.length ||
+        fromIndex === toIndex
+      ) {
+        return previous;
+      }
+      const next = [...previous];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      try {
+        window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the in-memory reorder usable if storage is unavailable.
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearPlaybackHistory = useCallback(() => {
+    setPlaybackHistory([]);
+    try {
+      window.localStorage.removeItem(PLAYBACK_HISTORY_STORAGE_KEY);
+    } catch {
+      // Ignore privacy-mode failures; the in-memory history is still cleared.
+    }
+  }, []);
+
+  const handleDeletePlaybackHistoryTrack = useCallback(
+    (track: PlaybackHistoryTrack) => {
+      setPlaybackHistory((previous) => {
+        const next = previous.filter(
+          (item) => !(item.id === track.id && item.apiId === track.apiId),
+        );
+        try {
+          window.localStorage.setItem(
+            PLAYBACK_HISTORY_STORAGE_KEY,
+            JSON.stringify(next),
+          );
+        } catch {
+          // Ignore storage failures without affecting the visible history list.
+        }
+        return next;
+      });
+    },
+    [],
   );
 
   const playNext = useCallback(() => {
@@ -814,6 +1056,10 @@ const MusicPlayer = () => {
   const handleSearch = useCallback(async () => {
     const keyword = searchTerm.trim();
     if (!keyword) {
+      const activeTrack =
+        soundRef.current && currentSongIndex >= 0
+          ? musicList[currentSongIndex]
+          : null;
       searchRequestIdRef.current += 1;
       setIsSearching(false);
       const filtered = localTracks.filter(
@@ -821,7 +1067,23 @@ const MusicPlayer = () => {
           track.apiId === selectedApiId && track.source === selectedSource,
       );
       setAllTracks(filtered);
-      setMusicList(filtered);
+      if (activeTrack) {
+        const existingIndex = filtered.findIndex(
+          (track) => track.id === activeTrack.id,
+        );
+        const nextList = [...filtered];
+        const nextIndex = existingIndex >= 0 ? existingIndex : 0;
+        if (existingIndex >= 0) {
+          nextList[existingIndex] = { ...nextList[existingIndex], ...activeTrack };
+        } else {
+          nextList.unshift(activeTrack);
+        }
+        setMusicList(nextList);
+        setCurrentSongIndex(nextIndex);
+      } else {
+        setMusicList(filtered);
+        resetPlayer();
+      }
       setShowingSearchResults(false);
       setShowTranslation(false);
       setErrorMessage(null);
@@ -829,7 +1091,6 @@ const MusicPlayer = () => {
       setSearchPageInput("1");
       setSearchHasMore(false);
       setLastSearchKeyword(null);
-      resetPlayer();
       return;
     }
 
@@ -837,6 +1098,8 @@ const MusicPlayer = () => {
     await performSearch(selectedApiId, selectedSource, keyword, 1);
   }, [
     localTracks,
+    currentSongIndex,
+    musicList,
     performSearch,
     resetPlayer,
     searchTerm,
@@ -955,13 +1218,33 @@ const MusicPlayer = () => {
         setSearchPageInput("1");
         void performSearch(apiId, selectedSource, searchTerm.trim(), 1);
       } else {
+        const activeTrack =
+          soundRef.current && currentSongIndex >= 0
+            ? musicList[currentSongIndex]
+            : null;
         searchRequestIdRef.current += 1;
         setIsSearching(false);
         const filtered = localTracks.filter(
           (track) => track.apiId === apiId && track.source === selectedSource,
         );
         setAllTracks(filtered);
-        setMusicList(filtered);
+        if (activeTrack) {
+          const existingIndex = filtered.findIndex(
+            (track) => track.id === activeTrack.id,
+          );
+          const nextList = [...filtered];
+          const nextIndex = existingIndex >= 0 ? existingIndex : 0;
+          if (existingIndex >= 0) {
+            nextList[existingIndex] = { ...nextList[existingIndex], ...activeTrack };
+          } else {
+            nextList.unshift(activeTrack);
+          }
+          setMusicList(nextList);
+          setCurrentSongIndex(nextIndex);
+        } else {
+          setMusicList(filtered);
+          resetPlayer();
+        }
         setShowingSearchResults(false);
         setShowTranslation(false);
         setErrorMessage(null);
@@ -969,11 +1252,12 @@ const MusicPlayer = () => {
         setSearchPageInput("1");
         setSearchHasMore(false);
         setLastSearchKeyword(null);
-        resetPlayer();
       }
     },
     [
       localTracks,
+      currentSongIndex,
+      musicList,
       performSearch,
       resetPlayer,
       searchTerm,
@@ -991,13 +1275,33 @@ const MusicPlayer = () => {
         setSearchPageInput("1");
         void performSearch(selectedApiId, source, searchTerm.trim(), 1);
       } else {
+        const activeTrack =
+          soundRef.current && currentSongIndex >= 0
+            ? musicList[currentSongIndex]
+            : null;
         searchRequestIdRef.current += 1;
         setIsSearching(false);
         const filtered = localTracks.filter(
           (track) => track.apiId === selectedApiId && track.source === source,
         );
         setAllTracks(filtered);
-        setMusicList(filtered);
+        if (activeTrack) {
+          const existingIndex = filtered.findIndex(
+            (track) => track.id === activeTrack.id,
+          );
+          const nextList = [...filtered];
+          const nextIndex = existingIndex >= 0 ? existingIndex : 0;
+          if (existingIndex >= 0) {
+            nextList[existingIndex] = { ...nextList[existingIndex], ...activeTrack };
+          } else {
+            nextList.unshift(activeTrack);
+          }
+          setMusicList(nextList);
+          setCurrentSongIndex(nextIndex);
+        } else {
+          setMusicList(filtered);
+          resetPlayer();
+        }
         setShowingSearchResults(false);
         setShowTranslation(false);
         setErrorMessage(null);
@@ -1005,11 +1309,12 @@ const MusicPlayer = () => {
         setSearchPageInput("1");
         setSearchHasMore(false);
         setLastSearchKeyword(null);
-        resetPlayer();
       }
     },
     [
       localTracks,
+      currentSongIndex,
+      musicList,
       performSearch,
       resetPlayer,
       searchTerm,
@@ -1017,20 +1322,6 @@ const MusicPlayer = () => {
       selectedSource,
     ],
   );
-
-  /* useEffect(() => {
-    if (searchTerm.trim() === '' && showingSearchResults) {
-      searchRequestIdRef.current += 1;
-      setIsSearching(false);
-      const filtered = localTracks.filter((track) => track.apiId === selectedApiId && track.source === selectedSource);
-      setAllTracks(filtered);
-      setMusicList(filtered);
-      setShowingSearchResults(false);
-      setShowTranslation(false);
-      setErrorMessage(null);
-      resetPlayer();
-    }
-  }, [localTracks, resetPlayer, searchTerm, selectedApiId, selectedSource, showingSearchResults]);*/
 
   useEffect(() => {
     if (selectedBitrate <= 0) return;
@@ -1203,6 +1494,8 @@ const MusicPlayer = () => {
           loadingTrackIndex={loadingTrackIndex}
           musicApis={MUSIC_APIS}
           musicList={musicList}
+          playbackHistory={playbackHistory}
+          favorites={favorites}
           searchHasMore={searchHasMore}
           searchPage={searchPage}
           searchPageInput={searchPageInput}
@@ -1212,8 +1505,14 @@ const MusicPlayer = () => {
           selectedBitrate={selectedBitrate}
           selectedSource={selectedSource}
           showingSearchResults={showingSearchResults}
+          showingPlaybackHistory={showingPlaybackHistory}
+          showingFavorites={showingFavorites}
           onApiChange={handleApiChange}
           onBitrateChange={setSelectedBitrate}
+          onClearPlaybackHistory={handleClearPlaybackHistory}
+          onDeletePlaybackHistoryTrack={handleDeletePlaybackHistoryTrack}
+          onPlayHistoryTrack={handlePlayHistoryTrack}
+          onPlayFavoriteTrack={handlePlayFavoriteTrack}
           onPlaySong={(index) => {
             void playSong(index);
           }}
@@ -1229,6 +1528,16 @@ const MusicPlayer = () => {
             void handleShowTrackInfo(track);
           }}
           onSourceChange={handleSourceChange}
+          onToggleFavorite={handleToggleFavorite}
+          onReorderFavorites={handleReorderFavorites}
+          onTogglePlaybackHistory={() => {
+            setShowingPlaybackHistory((showing) => !showing);
+            setShowingFavorites(false);
+          }}
+          onToggleFavorites={() => {
+            setShowingFavorites((showing) => !showing);
+            setShowingPlaybackHistory(false);
+          }}
         />
         <DesktopPlayer
           currentSong={currentSong}
