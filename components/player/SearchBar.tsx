@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import clsx from "clsx";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import type { MusicApiId } from "../../api";
 import type { MusicSource } from "../../data/localTracks";
 import type { BitrateOption } from "./types";
@@ -51,9 +51,17 @@ export function SearchBar({
   onTogglePlaybackHistory,
   onToggleFavorites,
 }: SearchBarProps) {
+  // 移动端筛选区默认收起，桌面端始终展开
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
   return (
     <div className="p-3 md:p-6 border-b border-slate-200/60 shrink-0">
-      <div className="flex flex-wrap items-center gap-3 mb-3">
+      <div
+        className={clsx(
+          "flex-wrap items-center gap-3 mb-3",
+          filtersExpanded ? "flex" : "hidden md:flex",
+        )}
+      >
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium text-slate-600">API</span>
           <select
@@ -142,25 +150,36 @@ export function SearchBar({
             }
           }}
           placeholder="搜索歌曲/歌手/专辑"
-          className="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white/70 text-slate-800 placeholder-slate-500"
+          className="flex-1 px-3 py-1.5 md:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white/70 text-slate-800 placeholder-slate-500"
         />
         <button
           type="button"
           onClick={onSearch}
           disabled={isSearching}
+          aria-label="搜索"
           className={clsx(
-            "px-4 py-2 rounded-lg bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:shadow-md inline-flex items-center justify-center",
+            "px-3 py-1 md:py-2 rounded-lg bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:shadow-md inline-flex items-center justify-center",
             isSearching && "opacity-80 cursor-not-allowed",
           )}
         >
           {isSearching ? (
             <div className="w-4 h-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <>
-              <Search size={16} className="mr-1" />
-              搜索
-            </>
+            <Search size={16} />
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFiltersExpanded((expanded) => !expanded)}
+          aria-label={filtersExpanded ? "收起筛选" : "展开筛选"}
+          className={clsx(
+            "md:hidden px-3 py-1 rounded-lg border inline-flex items-center justify-center transition-colors",
+            filtersExpanded
+              ? "border-sky-500 bg-sky-500 text-white"
+              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60",
+          )}
+        >
+          <SlidersHorizontal size={16} />
         </button>
       </div>
       {errorMessage && (
