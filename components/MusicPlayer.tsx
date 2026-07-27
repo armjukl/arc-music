@@ -171,6 +171,8 @@ const MusicPlayer = () => {
   const [pendingHistoryIndex, setPendingHistoryIndex] = useState<number | null>(null);
 
   const soundRef = useRef<HTMLAudioElement | null>(null);
+  const metadataRequestsRef = useRef(new Map<string, Promise<Track>>());
+  const lastLoadedPlaybackKeyRef = useRef("");
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoPlayRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("order");
@@ -465,51 +467,74 @@ const MusicPlayer = () => {
 
   const loadAuxiliaryResources = useCallback(
     async (track: Track): Promise<Track> => {
-      const api = getMusicApi(track.apiId);
-      const picPromise =
-        track.cover || !track.picId
-          ? Promise.resolve(null)
-          : api
-              .getPic({
-                source: track.source,
-                id: track.picId,
-                size: DEFAULT_COVER_SIZE,
-              })
-              .catch(() => null);
-      const lyricPromise =
-        track.lyric || !track.lyricId
-          ? Promise.resolve(null)
-          : api
-              .getLyric({ source: track.source, id: track.lyricId })
-              .catch(() => null);
+      const key = trackResourceKey(track);
+      const pending = metadataRequestsRef.current.get(key);
+      if (pending) return pending;
 
-      const [picData, lyricData] = await Promise.all([picPromise, lyricPromise]);
-      const cover =
-        picData && typeof picData.url === "string" && picData.url.trim()
-          ? picData.url
-          : track.cover ?? null;
-      const lyric =
-        lyricData && typeof lyricData.lyric === "string" && lyricData.lyric.trim()
-          ? lyricData.lyric
-          : track.lyric ?? null;
-      const tLyric =
-        lyricData &&
-        typeof lyricData.tlyric === "string" &&
-        lyricData.tlyric.trim()
-          ? lyricData.tlyric
-          : track.tLyric ?? null;
+      const request = (async () => {
+        const api = getMusicApi(track.apiId);
+        const picPromise =
+          track.cover || !track.picId
+            ? Promise.resolve(null)
+            : api
+                .getPic({
+                  source: track.source,
+                  id: track.picId,
+                  size: DEFAULT_COVER_SIZE,
+                })
+                .catch(() => null);
+        const lyricPromise =
+          track.lyric || !track.lyricId
+            ? Promise.resolve(null)
+            : api
+                .getLyric({ source: track.source, id: track.lyricId })
+                .catch(() => null);
 
-      if (
-        cover === (track.cover ?? null) &&
-        lyric === (track.lyric ?? null) &&
-        tLyric === (track.tLyric ?? null)
-      ) {
-        return track;
-      }
+        const [picData, lyricData] = await Promise.all([picPromise, lyricPromise]);
+        const cover =
+          picData && typeof picData.url === "string" && picData.url.trim()
+            ? picData.url
+            : track.cover ?? null;
+        const lyric =
+          lyricData &&
+          typeof lyricData.lyric === "string" &&
+          lyricData.lyric.trim()
+            ? lyricData.lyric
+            : track.lyric ?? null;
+        const tLyric =
+          lyricData &&
+          typeof lyricData.tlyric === "string" &&
+          lyricData.tlyric.trim()
+            ? lyricData.tlyric
+            : track.tLyric ?? null;
 
-      const enrichedTrack = { ...track, cover, lyric, tLyric };
-      updateTrackInStates(enrichedTrack, true);
-      return enrichedTrack;
+        if (
+          cover === (track.cover ?? null) &&
+          lyric === (track.lyric ?? null) &&
+          tLyric === (track.tLyric ?? null)
+        ) {
+          return track;
+        }
+
+        const enrichedTrack = { ...track, cover, lyric, tLyric };
+        updateTrackInStates(enrichedTrack, true);
+        return enrichedTrack;
+      })();
+
+      metadataRequestsRef.current.set(key, request);
+      void request.then(
+        () => {
+          if (metadataRequestsRef.current.get(key) === request) {
+            metadataRequestsRef.current.delete(key);
+          }
+        },
+        () => {
+          if (metadataRequestsRef.current.get(key) === request) {
+            metadataRequestsRef.current.delete(key);
+          }
+        },
+      );
+      return request;
     },
     [updateTrackInStates],
   );
@@ -640,6 +665,7 @@ const MusicPlayer = () => {
         };
 
         updateTrackInStates(baseTrack);
+        lastLoadedPlaybackKeyRef.current = "";
         if (soundRef.current) {
           disposeAudio(soundRef.current);
         }
@@ -881,6 +907,7 @@ const MusicPlayer = () => {
 
   const resetPlayer = useCallback(() => {
     playRequestIdRef.current += 1;
+    lastLoadedPlaybackKeyRef.current = "";
     setLoadingTrackIndex(null);
     if (soundRef.current) {
       disposeAudio(soundRef.current);
@@ -899,7 +926,15 @@ const MusicPlayer = () => {
 
     const audio = soundRef.current;
     if (!audio) return;
+    const playbackKey = `${currentSongKey}:${selectedBitrate}`;
+    if (lastLoadedPlaybackKeyRef.current === playbackKey) return;
+    lastLoadedPlaybackKeyRef.current = playbackKey;
     let disposed = false;
+    const clearPlaybackKey = () => {
+      if (lastLoadedPlaybackKeyRef.current === playbackKey) {
+        lastLoadedPlaybackKeyRef.current = "";
+      }
+    };
 
     const handlePlay = () => {
       setIsPlaying(true);
@@ -913,6 +948,7 @@ const MusicPlayer = () => {
       if (playbackModeRef.current === "single") {
         audio.currentTime = 0;
         playAudio(audio, () => {
+          clearPlaybackKey();
           setErrorMessage("音频播放失败，请重试");
         });
         return;
@@ -926,6 +962,7 @@ const MusicPlayer = () => {
     };
     const handleError = () => {
       if (disposed || soundRef.current !== audio) return;
+      clearPlaybackKey();
       setIsPlaying(false);
       stopProgressTimer();
       setErrorMessage("音频加载失败，请重试");
@@ -943,6 +980,7 @@ const MusicPlayer = () => {
     if (autoPlayRef.current) {
       autoPlayRef.current = false;
       playAudio(audio, () => {
+        clearPlaybackKey();
         setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
       });
     }
@@ -959,7 +997,7 @@ const MusicPlayer = () => {
       }
       stopProgressTimer();
     };
-  }, [currentSongKey, currentSong?.url]);
+  }, [currentSongKey, currentSong?.url, selectedBitrate]);
 
   // 更新音量
   useEffect(() => {
@@ -1007,6 +1045,7 @@ const MusicPlayer = () => {
       soundRef.current.pause();
     } else {
       playAudio(soundRef.current, () => {
+        lastLoadedPlaybackKeyRef.current = "";
         setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
       });
     }
