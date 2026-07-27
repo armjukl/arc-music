@@ -1,4 +1,3 @@
-import { Readable } from "node:stream";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const MUSIC_API_HUB_BASE = "http://154.36.187.103:8787";
@@ -94,16 +93,8 @@ export default async function handler(
       return;
     }
 
-    const readable = Readable.fromWeb(
-      upstreamResponse.body as Parameters<typeof Readable.fromWeb>[0],
-    );
-    await new Promise<void>((resolve, reject) => {
-      readable.once("error", reject);
-      response.once("error", reject);
-      response.once("finish", resolve);
-      response.once("close", resolve);
-      readable.pipe(response);
-    });
+    const body = await upstreamResponse.arrayBuffer();
+    response.send(Buffer.from(body));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[music-hub:${requestId}] error=${message}`);
