@@ -58,6 +58,20 @@ function disposeAudio(audio: HTMLAudioElement): void {
     // Older Safari can throw while aborting an in-flight media load.
   }
 }
+
+function playAudio(
+  audio: HTMLAudioElement,
+  onError: () => void,
+): void {
+  try {
+    const result = audio.play();
+    if (result && typeof result.catch === "function") {
+      result.catch(onError);
+    }
+  } catch {
+    onError();
+  }
+}
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map((track) =>
   createTrack(track, DEFAULT_MUSIC_API_ID),
 );
@@ -869,7 +883,7 @@ const MusicPlayer = () => {
     const handleEnded = () => {
       if (playbackModeRef.current === "single") {
         audio.currentTime = 0;
-        void audio.play().catch(() => {
+        playAudio(audio, () => {
           setErrorMessage("音频播放失败，请重试");
         });
         return;
@@ -896,7 +910,7 @@ const MusicPlayer = () => {
 
     if (autoPlayRef.current) {
       autoPlayRef.current = false;
-      void audio.play().catch(() => {
+      playAudio(audio, () => {
         setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
       });
     }
@@ -961,7 +975,7 @@ const MusicPlayer = () => {
     if (isPlaying) {
       soundRef.current.pause();
     } else {
-      void soundRef.current.play().catch(() => {
+      playAudio(soundRef.current, () => {
         setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
       });
     }
