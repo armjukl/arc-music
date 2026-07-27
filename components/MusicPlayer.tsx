@@ -98,9 +98,6 @@ const MusicPlayer = () => {
   const [selectedSource, setSelectedSource] =
     useState<MusicSource>(DEFAULT_SOURCE);
   const [selectedBitrate, setSelectedBitrate] = useState<BitrateOption>(320);
-  const [allTracks, setAllTracks] = useState<Track[]>(
-    () => INITIAL_SOURCE_TRACKS,
-  );
   const [musicList, setMusicList] = useState<Track[]>(
     () => INITIAL_SOURCE_TRACKS,
   );
@@ -382,9 +379,6 @@ const MusicPlayer = () => {
     setLocalTracks((prev) =>
       prev.map((item) => (item.id === updated.id ? updated : item)),
     );
-    setAllTracks((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item)),
-    );
     setMusicList((prev) =>
       prev.map((item) => (item.id === updated.id ? updated : item)),
     );
@@ -656,7 +650,6 @@ const MusicPlayer = () => {
       setSelectedApiId(track.apiId);
       setSelectedSource(track.source);
       setSelectedBitrate(bitrate);
-      setAllTracks(tracks);
       setMusicList(tracks);
       setCurrentSongIndex(-1);
       setPendingHistoryIndex(index);
@@ -681,7 +674,6 @@ const MusicPlayer = () => {
       setSelectedApiId(track.apiId);
       setSelectedSource(track.source);
       setSelectedBitrate(bitrate);
-      setAllTracks(tracks);
       setMusicList(tracks);
       setCurrentSongIndex(-1);
       setPendingHistoryIndex(index);
@@ -1002,8 +994,6 @@ const MusicPlayer = () => {
           return;
         }
 
-        setAllTracks(mapped);
-
         let nextList: Track[] = mapped;
         let nextIndex: number | null = null;
 
@@ -1050,7 +1040,6 @@ const MusicPlayer = () => {
         setSearchPage(page);
         setSearchPageInput(String(page));
         setSearchHasMore(false);
-        setAllTracks([]);
         if (!hasActiveSound) {
           setMusicList([]);
         }
@@ -1076,7 +1065,6 @@ const MusicPlayer = () => {
         (track) =>
           track.apiId === selectedApiId && track.source === selectedSource,
       );
-      setAllTracks(filtered);
       if (activeTrack) {
         const existingIndex = filtered.findIndex(
           (track) => track.id === activeTrack.id,
@@ -1244,7 +1232,6 @@ const MusicPlayer = () => {
         const filtered = localTracks.filter(
           (track) => track.apiId === apiId && track.source === nextSource,
         );
-        setAllTracks(filtered);
         if (activeTrack) {
           const existingIndex = filtered.findIndex(
             (track) => track.id === activeTrack.id,
@@ -1301,7 +1288,6 @@ const MusicPlayer = () => {
         const filtered = localTracks.filter(
           (track) => track.apiId === selectedApiId && track.source === source,
         );
-        setAllTracks(filtered);
         if (activeTrack) {
           const existingIndex = filtered.findIndex(
             (track) => track.id === activeTrack.id,
