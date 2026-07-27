@@ -172,9 +172,7 @@ const MusicPlayer = () => {
 
   const soundRef = useRef<HTMLAudioElement | null>(null);
   const metadataRequestsRef = useRef(new Map<string, Promise<Track>>());
-  const lastLoadedPlaybackKeyRef = useRef("");
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const autoPlayRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("order");
   const playRequestIdRef = useRef(0);
   const searchRequestIdRef = useRef(0);
@@ -680,11 +678,9 @@ const MusicPlayer = () => {
         };
 
         updateTrackInStates(baseTrack);
-        lastLoadedPlaybackKeyRef.current = "";
         if (soundRef.current) {
-          disposeAudio(soundRef.current);
+          soundRef.current.pause();
         }
-        autoPlayRef.current = autoplay;
         setProgress(0);
         setCurrentTime(0);
         setDuration(0);
@@ -700,6 +696,18 @@ const MusicPlayer = () => {
           return;
         }
 
+        const audio = soundRef.current;
+        if (!audio || !resolvedTrack.url) {
+          throw new Error("未获取到播放器");
+        }
+        audio.volume = volume;
+        audio.src = resolvedTrack.url;
+        if (autoplay) {
+          const result = audio.play();
+          if (result && typeof result.then === "function") {
+            await result;
+          }
+        }
         recordPlaybackHistory(resolvedTrack);
       } catch (err: unknown) {
         if (playRequestIdRef.current === requestId) {
@@ -720,6 +728,7 @@ const MusicPlayer = () => {
       selectedBitrate,
       updateTrackInStates,
       recordPlaybackHistory,
+      volume,
     ],
   );
 
@@ -922,7 +931,6 @@ const MusicPlayer = () => {
 
   const resetPlayer = useCallback(() => {
     playRequestIdRef.current += 1;
-    lastLoadedPlaybackKeyRef.current = "";
     setLoadingTrackIndex(null);
     if (soundRef.current) {
       disposeAudio(soundRef.current);
@@ -935,21 +943,11 @@ const MusicPlayer = () => {
     setDuration(0);
   }, []);
 
-  // 初始化音频
+  // Keep the audio element and its handlers stable. playSong assigns src and
+  // calls play immediately after the URL request, matching mkmusic-next.
   useEffect(() => {
-    if (!currentSong || !currentSong.url) return;
-
     const audio = soundRef.current;
     if (!audio) return;
-    const playbackKey = `${currentSongKey}:${selectedBitrate}`;
-    if (lastLoadedPlaybackKeyRef.current === playbackKey) return;
-    lastLoadedPlaybackKeyRef.current = playbackKey;
-    let disposed = false;
-    const clearPlaybackKey = () => {
-      if (lastLoadedPlaybackKeyRef.current === playbackKey) {
-        lastLoadedPlaybackKeyRef.current = "";
-      }
-    };
 
     const handlePlay = () => {
       setIsPlaying(true);
@@ -963,7 +961,6 @@ const MusicPlayer = () => {
       if (playbackModeRef.current === "single") {
         audio.currentTime = 0;
         playAudio(audio, () => {
-          clearPlaybackKey();
           setErrorMessage("音频播放失败，请重试");
         });
         return;
@@ -976,8 +973,7 @@ const MusicPlayer = () => {
       }
     };
     const handleError = () => {
-      if (disposed || soundRef.current !== audio) return;
-      clearPlaybackKey();
+      if (soundRef.current !== audio) return;
       setIsPlaying(false);
       stopProgressTimer();
       setErrorMessage("音频加载失败，请重试");
@@ -989,30 +985,16 @@ const MusicPlayer = () => {
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("error", handleError);
     audio.preload = "auto";
-    audio.volume = volume;
-    audio.src = currentSong.url;
-
-    if (autoPlayRef.current) {
-      autoPlayRef.current = false;
-      playAudio(audio, () => {
-        clearPlaybackKey();
-        setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
-      });
-    }
 
     return () => {
-      disposed = true;
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("error", handleError);
-      if (soundRef.current === audio) {
-        disposeAudio(audio);
-      }
       stopProgressTimer();
     };
-  }, [currentSongKey, currentSong?.url, selectedBitrate]);
+  }, [playNext]);
 
   // 更新音量
   useEffect(() => {
@@ -1060,7 +1042,6 @@ const MusicPlayer = () => {
       soundRef.current.pause();
     } else {
       playAudio(soundRef.current, () => {
-        lastLoadedPlaybackKeyRef.current = "";
         setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
       });
     }
@@ -1083,8 +1064,6 @@ const MusicPlayer = () => {
 
       if (!hasActiveSound) {
         resetPlayer();
-      } else {
-        autoPlayRef.current = false;
       }
 
       setIsSearching(true);
