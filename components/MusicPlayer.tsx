@@ -181,6 +181,7 @@ const MusicPlayer = () => {
   const lyricDesktopRef = useRef<HTMLDivElement | null>(null);
   const lyricMobileRef = useRef<HTMLDivElement | null>(null);
   const infoRequestIdRef = useRef(0);
+  const currentSongRef = useRef<Track | undefined>(undefined);
 
   const currentSong =
     currentSongIndex >= 0 ? musicList[currentSongIndex] : undefined;
@@ -193,6 +194,10 @@ const MusicPlayer = () => {
           trackStateKey(favorite) === trackStateKey(currentSong),
       )
     : false;
+
+  useEffect(() => {
+    currentSongRef.current = currentSong;
+  }, [currentSong]);
 
   useEffect(() => {
     try {
@@ -545,7 +550,7 @@ const MusicPlayer = () => {
       desiredBitrate: BitrateOption,
     ): Promise<Track> => {
       if (track.url && track.bitrate === desiredBitrate) {
-        return loadAuxiliaryResources(track);
+        return track;
       }
 
       const keyword = (
@@ -596,7 +601,7 @@ const MusicPlayer = () => {
         }
       }
 
-      const metadataTrack: Track = {
+      const identifiedTrack: Track = {
         ...track,
         url: undefined,
         trackId,
@@ -612,7 +617,9 @@ const MusicPlayer = () => {
         fileSizeKb: track.fileSizeKb ?? null,
       };
 
-      const enrichedTrack = await loadAuxiliaryResources(metadataTrack);
+      // Publish the resource IDs before the URL resolves. The independent
+      // cover/lyric effect uses this key, like mkmusic-next's lyric loader.
+      updateTrackInStates(identifiedTrack, true);
       const urlData = await api.getUrl({
         source: track.source,
         id: trackId,
@@ -624,19 +631,27 @@ const MusicPlayer = () => {
       }
 
       const resolvedTrack: Track = {
-        ...enrichedTrack,
+        ...identifiedTrack,
         url: sanitizeUrl(urlData.url),
         bitrate: desiredBitrate,
         fileSizeKb:
           typeof urlData.size === "number"
             ? urlData.size / 1024
-            : (enrichedTrack.fileSizeKb ?? null),
+            : (identifiedTrack.fileSizeKb ?? null),
       };
       updateTrackInStates(resolvedTrack, true);
       return resolvedTrack;
     },
-    [loadAuxiliaryResources],
+    [updateTrackInStates],
   );
+
+  // Metadata is independent of the playback URL. A slow or failed lyric
+  // request must never delay the song URL or prevent audio from starting.
+  useEffect(() => {
+    const track = currentSongRef.current;
+    if (!track) return;
+    void loadAuxiliaryResources(track);
+  }, [currentSongKey, loadAuxiliaryResources]);
 
   const playSong = useCallback(
     async (index: number, autoplay = true) => {
@@ -1307,10 +1322,11 @@ const MusicPlayer = () => {
           { ...track, bitrate: desiredBitrate },
           desiredBitrate,
         );
+        const enrichedTrack = await loadAuxiliaryResources(resolved);
         if (infoRequestIdRef.current !== requestId) {
           return;
         }
-        setInfoModalTrack({ ...resolved });
+        setInfoModalTrack({ ...enrichedTrack });
       } catch (err) {
         if (infoRequestIdRef.current !== requestId) {
           return;
@@ -1324,7 +1340,7 @@ const MusicPlayer = () => {
         }
       }
     },
-    [ensureTrackResolved, selectedBitrate],
+    [ensureTrackResolved, loadAuxiliaryResources, selectedBitrate],
   );
 
   const handleRetryInfo = useCallback(() => {
