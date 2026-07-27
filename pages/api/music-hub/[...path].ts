@@ -1,4 +1,4 @@
-import http from "node:http";
+import { Readable } from "node:stream";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const MUSIC_API_HUB_BASE = "http://154.36.187.103:8787";
@@ -32,72 +32,85 @@ function queryValues(value: string | string[] | undefined): string[] {
   return value === undefined ? [] : [value];
 }
 
-export default function handler(
+export default async function handler(
   request: NextApiRequest,
   response: NextApiResponse,
-): void {
-  const pathParts = queryValues(request.query.path);
-  if (pathParts.length === 0) {
-    response.status(400).json({ detail: "Missing Music API Hub path" });
-    return;
-  }
-
-  const target = new URL(
-    pathParts.map((part) => encodeURIComponent(part)).join("/"),
-    `${MUSIC_API_HUB_BASE}/`,
-  );
-  for (const [key, value] of Object.entries(request.query)) {
-    if (key === "path") continue;
-    for (const item of queryValues(value)) {
-      target.searchParams.append(key, item);
-    }
-  }
-
+): Promise<void> {
   const requestId = Math.random().toString(36).slice(2, 8);
-  console.info(
-    `[music-hub:${requestId}] ${request.method ?? "GET"} ${target.pathname}${target.search}`,
-  );
 
-  const headers: Record<string, string> = {};
-  for (const headerName of FORWARDED_REQUEST_HEADERS) {
-    const value = request.headers[headerName];
-    if (typeof value === "string") headers[headerName] = value;
-  }
+  try {
+    const pathParts = queryValues(request.query.path);
+    if (pathParts.length === 0) {
+      response.status(400).json({ detail: "Missing Music API Hub path" });
+      return;
+    }
 
-  const upstreamRequest = http.request(
-    target,
-    {
-      method: request.method ?? "GET",
-      headers,
-    },
-    (upstreamResponse) => {
-      response.statusCode = upstreamResponse.statusCode ?? 502;
-      console.info(
-        `[music-hub:${requestId}] upstream=${response.statusCode} content-type=${upstreamResponse.headers["content-type"] ?? "-"} content-range=${upstreamResponse.headers["content-range"] ?? "-"}`,
-      );
-      for (const headerName of FORWARDED_RESPONSE_HEADERS) {
-        const value = upstreamResponse.headers[headerName];
-        if (typeof value === "string") response.setHeader(headerName, value);
+    const target = new URL(
+      pathParts.map((part) => encodeURIComponent(part)).join("/"),
+      `${MUSIC_API_HUB_BASE}/`,
+    );
+    for (const [key, value] of Object.entries(request.query)) {
+      if (key === "path") continue;
+      for (const item of queryValues(value)) {
+        target.searchParams.append(key, item);
       }
-      upstreamResponse.pipe(response);
-    },
-  );
+    }
 
-  upstreamRequest.on("error", (error) => {
-    console.error(`[music-hub:${requestId}] error=${error.message}`);
+    console.info(
+      `[music-hub:${requestId}] ${request.method ?? "GET"} ${target.pathname}${target.search}`,
+    );
+
+    const headers: Record<string, string> = {};
+    for (const headerName of FORWARDED_REQUEST_HEADERS) {
+      const value = request.headers[headerName];
+      if (typeof value === "string") headers[headerName] = value;
+    }
+
+    const method = request.method ?? "GET";
+    const hasBody = method !== "GET" && method !== "HEAD";
+    const upstreamResponse = await fetch(target, {
+      method,
+      headers,
+      redirect: "manual",
+      ...(hasBody
+        ? {
+            body: request as unknown as BodyInit,
+            duplex: "half" as const,
+          }
+        : {}),
+    });
+
+    response.statusCode = upstreamResponse.status;
+    console.info(
+      `[music-hub:${requestId}] upstream=${upstreamResponse.status} content-type=${upstreamResponse.headers.get("content-type") ?? "-"} content-range=${upstreamResponse.headers.get("content-range") ?? "-"}`,
+    );
+    for (const headerName of FORWARDED_RESPONSE_HEADERS) {
+      const value = upstreamResponse.headers.get(headerName);
+      if (value !== null) response.setHeader(headerName, value);
+    }
+
+    if (method === "HEAD" || !upstreamResponse.body) {
+      response.end();
+      return;
+    }
+
+    const readable = Readable.fromWeb(
+      upstreamResponse.body as Parameters<typeof Readable.fromWeb>[0],
+    );
+    await new Promise<void>((resolve, reject) => {
+      readable.once("error", reject);
+      response.once("error", reject);
+      response.once("finish", resolve);
+      response.once("close", resolve);
+      readable.pipe(response);
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[music-hub:${requestId}] error=${message}`);
     if (response.headersSent) {
       response.end();
       return;
     }
-    response.status(502).json({
-      detail: `Music API Hub 请求失败：${error.message}`,
-    });
-  });
-  request.on("aborted", () => upstreamRequest.destroy());
-
-  if (request.method === "GET" || request.method === "HEAD") {
-    upstreamRequest.end();
-  } else {
-    request.pipe(upstreamRequest);
+    response.status(502).json({ detail: `Music API Hub request failed: ${message}` });
   }
 }
