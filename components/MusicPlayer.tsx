@@ -7,7 +7,6 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { Howl } from "howler";
 import { BITRATE_OPTIONS, LOCAL_TRACKS, MusicSource } from "../data/localTracks";
 import { DEFAULT_MUSIC_API_ID, getMusicApi, MUSIC_APIS } from "../api";
 import type { MusicApiId } from "../api";
@@ -49,6 +48,16 @@ const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
 const FAVORITES_STORAGE_KEY = "arc-music-favorites";
 const MAX_PLAYBACK_HISTORY = 50;
 const MAX_FAVORITES = 50;
+
+function disposeAudio(audio: HTMLAudioElement): void {
+  audio.pause();
+  audio.removeAttribute("src");
+  try {
+    audio.load();
+  } catch {
+    // Older Safari can throw while aborting an in-flight media load.
+  }
+}
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map((track) =>
   createTrack(track, DEFAULT_MUSIC_API_ID),
 );
@@ -132,7 +141,7 @@ const MusicPlayer = () => {
   const [showingFavorites, setShowingFavorites] = useState(false);
   const [pendingHistoryIndex, setPendingHistoryIndex] = useState<number | null>(null);
 
-  const soundRef = useRef<Howl | null>(null);
+  const soundRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoPlayRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("order");
@@ -587,7 +596,7 @@ const MusicPlayer = () => {
         recordPlaybackHistory(resolvedTrack);
 
         if (soundRef.current) {
-          soundRef.current.unload();
+          disposeAudio(soundRef.current);
           soundRef.current = null;
         }
 
@@ -820,7 +829,7 @@ const MusicPlayer = () => {
     playRequestIdRef.current += 1;
     setLoadingTrackIndex(null);
     if (soundRef.current) {
-      soundRef.current.unload();
+      disposeAudio(soundRef.current);
       soundRef.current = null;
     }
     setIsPlaying(false);
@@ -836,54 +845,73 @@ const MusicPlayer = () => {
     if (!currentSong || !currentSong.url) return;
 
     if (soundRef.current) {
-      soundRef.current.unload();
+      disposeAudio(soundRef.current);
       soundRef.current = null;
     }
 
-    const howl = new Howl({
-      src: [currentSong.url],
-      html5: true,
-      volume: volume,
-      onplay: () => {
-        setIsPlaying(true);
-        startProgressTimer();
-      },
-      onpause: () => {
-        setIsPlaying(false);
-        stopProgressTimer();
-      },
-      onend: () => {
-        if (playbackModeRef.current === "single") {
-          try {
-            howl.seek(0);
-            howl.play();
-          } catch {}
-          return;
-        }
-        playNext();
-      },
-      onload: () => {
-        setDuration(howl.duration());
-      },
-    });
+    // Use the native audio element directly. This is more reliable on older
+    // iOS Safari than Howler's HTML5 audio pool, especially for CDN URLs.
+    const audio = document.createElement("audio");
+    audio.preload = "auto";
+    audio.style.display = "none";
+    document.body.appendChild(audio);
+    audio.src = currentSong.url;
+    audio.volume = volume;
 
-    soundRef.current = howl;
+    const handlePlay = () => {
+      setIsPlaying(true);
+      startProgressTimer();
+    };
+    const handlePause = () => {
+      setIsPlaying(false);
+      stopProgressTimer();
+    };
+    const handleEnded = () => {
+      if (playbackModeRef.current === "single") {
+        audio.currentTime = 0;
+        void audio.play().catch(() => {
+          setErrorMessage("音频播放失败，请重试");
+        });
+        return;
+      }
+      playNext();
+    };
+    const handleLoadedMetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
+    const handleError = () => {
+      setIsPlaying(false);
+      stopProgressTimer();
+      setErrorMessage("音频加载失败，请重试");
+    };
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("error", handleError);
+    soundRef.current = audio;
 
     if (autoPlayRef.current) {
-      try {
-        howl.play();
-      } catch {
-        // ignore
-      } finally {
-        autoPlayRef.current = false;
-      }
+      autoPlayRef.current = false;
+      void audio.play().catch(() => {
+        setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
+      });
     }
 
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unload();
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("error", handleError);
+      if (soundRef.current === audio) {
+        disposeAudio(audio);
         soundRef.current = null;
       }
+      audio.parentNode?.removeChild(audio);
       stopProgressTimer();
     };
   }, [currentSong?.url]);
@@ -891,7 +919,7 @@ const MusicPlayer = () => {
   // 更新音量
   useEffect(() => {
     if (soundRef.current) {
-      soundRef.current.volume(volume);
+      soundRef.current.volume = volume;
     }
   }, [volume]);
 
@@ -905,9 +933,9 @@ const MusicPlayer = () => {
     stopProgressTimer();
     progressIntervalRef.current = setInterval(() => {
       const s = soundRef.current;
-      if (s && s.playing()) {
-        const seek = (s.seek() as number) || 0;
-        const dur = s.duration();
+      if (s && !s.paused && !s.ended) {
+        const seek = s.currentTime || 0;
+        const dur = s.duration;
         setCurrentTime(seek);
         if (dur && isFinite(dur) && dur > 0) {
           const pct = Math.max(0, Math.min(100, (seek / dur) * 100));
@@ -933,7 +961,9 @@ const MusicPlayer = () => {
     if (isPlaying) {
       soundRef.current.pause();
     } else {
-      soundRef.current.play();
+      void soundRef.current.play().catch(() => {
+        setErrorMessage("音频播放被浏览器阻止，请再次点击播放");
+      });
     }
   };
 
@@ -1384,11 +1414,11 @@ const MusicPlayer = () => {
     const s = soundRef.current;
     if (!s) return;
     const ratio = dragProgressRef.current / 100;
-    const dur = s.duration();
+    const dur = s.duration;
     const baseDur =
       dur && Number.isFinite(dur) && dur > 0 ? dur : duration || 0;
     const newTime = ratio * baseDur;
-    s.seek(newTime);
+    s.currentTime = newTime;
     setCurrentTime(newTime);
     setProgress(ratio * 100);
   };
