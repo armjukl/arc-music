@@ -586,13 +586,82 @@ const MusicPlayer = () => {
       };
 
       if (options.deferAuxiliaryResources) {
-        void loadAuxiliaryResources();
         return resolvedTrack;
       }
       return loadAuxiliaryResources();
     },
     [updateTrackInStates],
   );
+
+  // Load cover art and lyrics after the current track is visible. These
+  // requests must not delay URL playback and must not update a later track.
+  useEffect(() => {
+    const track = currentSong;
+    if (!track) return;
+
+    const api = getMusicApi(track.apiId);
+    let cancelled = false;
+
+    const loadAuxiliaryResources = async () => {
+      const picPromise =
+        track.cover || !track.picId
+          ? Promise.resolve(null)
+          : api
+              .getPic({
+                source: track.source,
+                id: track.picId,
+                size: DEFAULT_COVER_SIZE,
+              })
+              .catch(() => null);
+      const lyricPromise =
+        track.lyric || !track.lyricId
+          ? Promise.resolve(null)
+          : api
+              .getLyric({ source: track.source, id: track.lyricId })
+              .catch(() => null);
+
+      const [picData, lyricData] = await Promise.all([picPromise, lyricPromise]);
+      if (cancelled) return;
+
+      const cover =
+        picData && typeof picData.url === "string" && picData.url.trim()
+          ? picData.url
+          : track.cover ?? null;
+      const lyric =
+        lyricData && typeof lyricData.lyric === "string" && lyricData.lyric.trim()
+          ? lyricData.lyric
+          : track.lyric ?? null;
+      const tLyric =
+        lyricData &&
+        typeof lyricData.tlyric === "string" &&
+        lyricData.tlyric.trim()
+          ? lyricData.tlyric
+          : track.tLyric ?? null;
+
+      if (
+        cover === (track.cover ?? null) &&
+        lyric === (track.lyric ?? null) &&
+        tLyric === (track.tLyric ?? null)
+      ) {
+        return;
+      }
+
+      updateTrackInStates({ ...track, cover, lyric, tLyric });
+    };
+
+    void loadAuxiliaryResources();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentSong?.id,
+    currentSong?.apiId,
+    currentSong?.source,
+    currentSong?.trackId,
+    currentSong?.picId,
+    currentSong?.lyricId,
+    updateTrackInStates,
+  ]);
 
   const playSong = useCallback(
     async (index: number, autoplay = true) => {
@@ -621,6 +690,15 @@ const MusicPlayer = () => {
         };
 
         updateTrackInStates(baseTrack);
+        if (soundRef.current) {
+          disposeAudio(soundRef.current);
+        }
+        autoPlayRef.current = autoplay;
+        setProgress(0);
+        setCurrentTime(0);
+        setDuration(0);
+        setCurrentSongIndex(index);
+        setCoverUrl(baseTrack.cover ?? null);
 
         let resolvedTrack = baseTrack;
         if (!resolvedTrack.url) {
@@ -634,17 +712,6 @@ const MusicPlayer = () => {
         }
 
         recordPlaybackHistory(resolvedTrack);
-
-        if (soundRef.current) {
-          disposeAudio(soundRef.current);
-        }
-
-        autoPlayRef.current = autoplay;
-        setProgress(0);
-        setCurrentTime(0);
-        setDuration(0);
-        setCurrentSongIndex(index);
-        setCoverUrl(resolvedTrack.cover ?? null);
       } catch (err: unknown) {
         if (playRequestIdRef.current === requestId) {
           const message =
