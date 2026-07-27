@@ -1472,7 +1472,7 @@ const MusicPlayer = () => {
 
   return (
     <div className="relative min-h-screen text-slate-800">
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 -z-10 overflow-hidden">
         <div
           className="h-full w-full bg-center bg-cover scale-105 transform"
           style={{ backgroundImage: "url('bg/5.jpg')" }}
