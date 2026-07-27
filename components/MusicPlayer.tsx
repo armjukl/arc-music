@@ -434,7 +434,11 @@ const MusicPlayer = () => {
   }, []);
 
   const ensureTrackResolved = useCallback(
-    async (track: Track, desiredBitrate: BitrateOption): Promise<Track> => {
+    async (
+      track: Track,
+      desiredBitrate: BitrateOption,
+      options: { deferAuxiliaryResources?: boolean } = {},
+    ): Promise<Track> => {
       if (track.url && track.bitrate === desiredBitrate) {
         return track;
       }
@@ -448,8 +452,6 @@ const MusicPlayer = () => {
       let resolvedName = track.name;
       let resolvedAlbum = track.album;
       let resolvedArtist = track.artist;
-      let lyricText = track.lyric ?? null;
-      let translationText = track.tLyric ?? null;
       const api = getMusicApi(track.apiId);
 
       if (!trackId) {
@@ -500,49 +502,6 @@ const MusicPlayer = () => {
       }
 
       const resolvedUrl = sanitizeUrl(urlData.url);
-      let cover = track.cover ?? null;
-
-      if (picId) {
-        try {
-          const picData = await api.getPic({
-            source: track.source,
-            id: picId,
-            size: DEFAULT_COVER_SIZE,
-          });
-          if (
-            picData &&
-            typeof picData.url === "string" &&
-            picData.url.trim()
-          ) {
-            cover = picData.url;
-          }
-        } catch {
-          // ignore cover fetch failure
-        }
-      }
-
-      if (!lyricText && lyricId) {
-        try {
-          const lyricData = await api.getLyric({
-            source: track.source,
-            id: lyricId,
-          });
-          if (lyricData) {
-            if (typeof lyricData.lyric === "string" && lyricData.lyric.trim()) {
-              lyricText = lyricData.lyric;
-            }
-            if (
-              typeof lyricData.tlyric === "string" &&
-              lyricData.tlyric.trim()
-            ) {
-              translationText = lyricData.tlyric;
-            }
-          }
-        } catch {
-          // ignore lyric fetch failure
-        }
-      }
-
       const fileSizeKb =
         typeof urlData.size === "number"
           ? urlData.size / 1024
@@ -554,18 +513,83 @@ const MusicPlayer = () => {
         trackId,
         picId,
         lyricId,
-        cover,
+        cover: track.cover ?? null,
         name: resolvedName,
         album: resolvedAlbum,
         artist: resolvedArtist,
         bitrate: desiredBitrate,
-        lyric: lyricText,
-        tLyric: translationText,
+        lyric: track.lyric ?? null,
+        tLyric: track.tLyric ?? null,
         fileSizeKb,
       };
 
       updateTrackInStates(resolvedTrack);
-      return resolvedTrack;
+
+      const loadAuxiliaryResources = async (): Promise<Track> => {
+        let cover = resolvedTrack.cover ?? null;
+        let nextLyric = resolvedTrack.lyric ?? null;
+        let nextTranslation = resolvedTrack.tLyric ?? null;
+
+        if (picId) {
+          try {
+            const picData = await api.getPic({
+              source: track.source,
+              id: picId,
+              size: DEFAULT_COVER_SIZE,
+            });
+            if (picData && typeof picData.url === "string" && picData.url.trim()) {
+              cover = picData.url;
+            }
+          } catch {
+            // Ignore cover fetch failure after playback has started.
+          }
+        }
+
+        if (!nextLyric && lyricId) {
+          try {
+            const lyricData = await api.getLyric({
+              source: track.source,
+              id: lyricId,
+            });
+            if (lyricData) {
+              if (typeof lyricData.lyric === "string" && lyricData.lyric.trim()) {
+                nextLyric = lyricData.lyric;
+              }
+              if (
+                typeof lyricData.tlyric === "string" &&
+                lyricData.tlyric.trim()
+              ) {
+                nextTranslation = lyricData.tlyric;
+              }
+            }
+          } catch {
+            // Ignore lyric fetch failure after playback has started.
+          }
+        }
+
+        if (
+          cover === resolvedTrack.cover &&
+          nextLyric === resolvedTrack.lyric &&
+          nextTranslation === resolvedTrack.tLyric
+        ) {
+          return resolvedTrack;
+        }
+
+        const enrichedTrack: Track = {
+          ...resolvedTrack,
+          cover,
+          lyric: nextLyric,
+          tLyric: nextTranslation,
+        };
+        updateTrackInStates(enrichedTrack);
+        return enrichedTrack;
+      };
+
+      if (options.deferAuxiliaryResources) {
+        void loadAuxiliaryResources();
+        return resolvedTrack;
+      }
+      return loadAuxiliaryResources();
     },
     [updateTrackInStates],
   );
@@ -600,7 +624,9 @@ const MusicPlayer = () => {
 
         let resolvedTrack = baseTrack;
         if (!resolvedTrack.url) {
-          resolvedTrack = await ensureTrackResolved(baseTrack, selectedBitrate);
+          resolvedTrack = await ensureTrackResolved(baseTrack, selectedBitrate, {
+            deferAuxiliaryResources: true,
+          });
         }
 
         if (playRequestIdRef.current !== requestId) {
