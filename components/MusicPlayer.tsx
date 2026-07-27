@@ -635,9 +635,10 @@ const MusicPlayer = () => {
 
         recordPlaybackHistory(resolvedTrack);
 
-        if (soundRef.current) {
-          disposeAudio(soundRef.current);
-          soundRef.current = null;
+        const previousAudio = soundRef.current;
+        soundRef.current = null;
+        if (previousAudio) {
+          disposeAudio(previousAudio);
         }
 
         autoPlayRef.current = autoplay;
@@ -868,9 +869,10 @@ const MusicPlayer = () => {
   const resetPlayer = useCallback(() => {
     playRequestIdRef.current += 1;
     setLoadingTrackIndex(null);
-    if (soundRef.current) {
-      disposeAudio(soundRef.current);
-      soundRef.current = null;
+    const previousAudio = soundRef.current;
+    soundRef.current = null;
+    if (previousAudio) {
+      disposeAudio(previousAudio);
     }
     setIsPlaying(false);
     setCurrentSongIndex(-1);
@@ -884,9 +886,10 @@ const MusicPlayer = () => {
   useEffect(() => {
     if (!currentSong || !currentSong.url) return;
 
-    if (soundRef.current) {
-      disposeAudio(soundRef.current);
-      soundRef.current = null;
+    const previousAudio = soundRef.current;
+    soundRef.current = null;
+    if (previousAudio) {
+      disposeAudio(previousAudio);
     }
 
     // Use the native audio element directly. This is more reliable on older
@@ -922,6 +925,7 @@ const MusicPlayer = () => {
       }
     };
     const handleError = () => {
+      if (soundRef.current !== audio) return;
       setIsPlaying(false);
       stopProgressTimer();
       setErrorMessage("音频加载失败，请重试");
@@ -948,8 +952,8 @@ const MusicPlayer = () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("error", handleError);
       if (soundRef.current === audio) {
-        disposeAudio(audio);
         soundRef.current = null;
+        disposeAudio(audio);
       }
       audio.parentNode?.removeChild(audio);
       stopProgressTimer();
