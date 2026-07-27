@@ -49,6 +49,21 @@ const FAVORITES_STORAGE_KEY = "arc-music-favorites";
 const MAX_PLAYBACK_HISTORY = 50;
 const MAX_FAVORITES = 50;
 
+function trackStateKey(track: Pick<Track, "apiId" | "source" | "id">): string {
+  return `${track.apiId}:${track.source}:${track.id}`;
+}
+
+function trackResourceKey(track: Track): string {
+  return [
+    track.apiId,
+    track.source,
+    track.id,
+    track.trackId ?? "",
+    track.picId ?? "",
+    track.lyricId ?? "",
+  ].join(":");
+}
+
 function disposeAudio(audio: HTMLAudioElement): void {
   audio.pause();
   audio.removeAttribute("src");
@@ -167,10 +182,13 @@ const MusicPlayer = () => {
 
   const currentSong =
     currentSongIndex >= 0 ? musicList[currentSongIndex] : undefined;
+  const currentSongKey = currentSong
+    ? `${currentSongIndex}:${trackResourceKey(currentSong)}`
+    : "";
   const isCurrentSongFavorite = currentSong
     ? favorites.some(
         (favorite) =>
-          favorite.id === currentSong.id && favorite.apiId === currentSong.apiId,
+          trackStateKey(favorite) === trackStateKey(currentSong),
       )
     : false;
 
@@ -224,12 +242,12 @@ const MusicPlayer = () => {
 
   useEffect(() => {
     setCoverUrl(currentSong?.cover ?? null);
-  }, [currentSong?.cover]);
+  }, [currentSongKey, currentSong?.cover]);
 
   useEffect(() => {
     setShowTranslation(false);
     setLyricsExpanded(false);
-  }, [currentSong?.id]);
+  }, [currentSongKey]);
 
   useEffect(() => {
     if (!mobileExpanded) {
@@ -239,11 +257,11 @@ const MusicPlayer = () => {
 
   const originalLyricLines = useMemo(
     () => parseLyricLines(currentSong?.lyric),
-    [currentSong?.lyric],
+    [currentSongKey, currentSong?.lyric],
   );
   const translationLyricLines = useMemo(
     () => parseLyricLines(currentSong?.tLyric),
-    [currentSong?.tLyric],
+    [currentSongKey, currentSong?.tLyric],
   );
   const hasTranslationLyric = translationLyricLines.length > 0;
   const hasOriginalLyric = originalLyricLines.length > 0;
@@ -252,7 +270,7 @@ const MusicPlayer = () => {
     if (hasTranslationLyric) {
       setShowTranslation(true);
     }
-  }, [currentSong?.id, hasTranslationLyric]);
+  }, [currentSongKey, hasTranslationLyric]);
 
   function findTranslationForTime(
     time: number,
@@ -345,8 +363,8 @@ const MusicPlayer = () => {
     const timeKey = Number.isFinite(entry.time)
       ? entry.time.toFixed(3)
       : `idx-${activeLyricIndex}`;
-    return `${currentSong?.id ?? "unknown"}-combined-${timeKey}`;
-  }, [activeLyricIndex, currentSong?.id, displayLyricLines]);
+    return `${currentSongKey || "unknown"}-combined-${timeKey}`;
+  }, [activeLyricIndex, currentSongKey, displayLyricLines]);
 
   const previewLyricLines = useMemo(() => {
     if (displayLyricLines.length === 0)
@@ -403,7 +421,7 @@ const MusicPlayer = () => {
 
   const updateTrackInStates = useCallback((updated: Track, merge = false) => {
     const applyUpdate = (item: Track): Track => {
-      if (item.id !== updated.id) return item;
+      if (trackStateKey(item) !== trackStateKey(updated)) return item;
       if (!merge) return updated;
 
       const next = { ...item, ...updated };
@@ -432,7 +450,7 @@ const MusicPlayer = () => {
       const next = [
         historyTrack,
         ...previous.filter(
-          (item) => !(item.id === historyTrack.id && item.apiId === historyTrack.apiId),
+          (item) => trackStateKey(item) !== trackStateKey(historyTrack),
         ),
       ].slice(0, MAX_PLAYBACK_HISTORY);
 
@@ -738,12 +756,12 @@ const MusicPlayer = () => {
     const favorite = toFavoriteTrack(track);
     setFavorites((previous) => {
       const exists = previous.some(
-        (item) => item.id === favorite.id && item.apiId === favorite.apiId,
+        (item) => trackStateKey(item) === trackStateKey(favorite),
       );
       // Adding preserves the existing user-defined order; playback never changes it.
       const next = exists
         ? previous.filter(
-            (item) => !(item.id === favorite.id && item.apiId === favorite.apiId),
+            (item) => trackStateKey(item) !== trackStateKey(favorite),
           )
         : [...previous, favorite].slice(0, MAX_FAVORITES);
       try {
@@ -791,7 +809,7 @@ const MusicPlayer = () => {
     (track: PlaybackHistoryTrack) => {
       setPlaybackHistory((previous) => {
         const next = previous.filter(
-          (item) => !(item.id === track.id && item.apiId === track.apiId),
+          (item) => trackStateKey(item) !== trackStateKey(track),
         );
         try {
           window.localStorage.setItem(
@@ -941,7 +959,7 @@ const MusicPlayer = () => {
       }
       stopProgressTimer();
     };
-  }, [currentSong?.url]);
+  }, [currentSongKey, currentSong?.url]);
 
   // 更新音量
   useEffect(() => {
@@ -1066,7 +1084,7 @@ const MusicPlayer = () => {
 
         if (hasActiveSound && activeTrack) {
           const existingIndex = mapped.findIndex(
-            (item) => item.id === activeTrack.id,
+            (item) => trackStateKey(item) === trackStateKey(activeTrack),
           );
           if (existingIndex >= 0) {
             const mergedTrack: Track = {
@@ -1136,7 +1154,7 @@ const MusicPlayer = () => {
       setAllTracks(filtered);
       if (activeTrack) {
         const existingIndex = filtered.findIndex(
-          (track) => track.id === activeTrack.id,
+          (track) => trackStateKey(track) === trackStateKey(activeTrack),
         );
         const nextList = [...filtered];
         const nextIndex = existingIndex >= 0 ? existingIndex : 0;
@@ -1304,7 +1322,7 @@ const MusicPlayer = () => {
         setAllTracks(filtered);
         if (activeTrack) {
           const existingIndex = filtered.findIndex(
-            (track) => track.id === activeTrack.id,
+            (track) => trackStateKey(track) === trackStateKey(activeTrack),
           );
           const nextList = [...filtered];
           const nextIndex = existingIndex >= 0 ? existingIndex : 0;
@@ -1361,7 +1379,7 @@ const MusicPlayer = () => {
         setAllTracks(filtered);
         if (activeTrack) {
           const existingIndex = filtered.findIndex(
-            (track) => track.id === activeTrack.id,
+            (track) => trackStateKey(track) === trackStateKey(activeTrack),
           );
           const nextList = [...filtered];
           const nextIndex = existingIndex >= 0 ? existingIndex : 0;
@@ -1623,6 +1641,7 @@ const MusicPlayer = () => {
         />
         <DesktopPlayer
           currentSong={currentSong}
+          currentSongKey={currentSongKey}
           coverUrl={coverUrl}
           isPlaying={isPlaying}
           lyricsExpanded={lyricsExpanded}
@@ -1666,6 +1685,7 @@ const MusicPlayer = () => {
         />
         <MobilePlayer
           currentSong={currentSong}
+          currentSongKey={currentSongKey}
           coverUrl={coverUrl}
           isPlaying={isPlaying}
           mobileExpanded={mobileExpanded}

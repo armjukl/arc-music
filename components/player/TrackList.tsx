@@ -80,7 +80,12 @@ export function TrackList({
       ? playbackHistory
       : musicList;
   const isFavorite = (track: Track | PlaybackHistoryTrack | FavoriteTrack) =>
-    favorites.some((favorite) => favorite.id === track.id && favorite.apiId === track.apiId);
+    favorites.some(
+      (favorite) =>
+        favorite.id === track.id &&
+        favorite.apiId === track.apiId &&
+        favorite.source === track.source,
+    );
 
   const clearFavoriteDrag = () => {
     if (favoriteDragTimerRef.current !== null) {
@@ -269,7 +274,7 @@ export function TrackList({
           showingSearchResults && song.apiId === "bilibili";
         return (
           <div
-            key={`${song.apiId}-${song.id}`}
+            key={`${song.apiId}-${song.source}-${song.id}-${song.trackId ?? ""}-${song.picId ?? ""}-${song.lyricId ?? ""}`}
             data-favorite-index={showingFavorites ? index : undefined}
             className={clsx(
               "group flex items-center p-4 rounded-2xl mb-3 cursor-pointer transition-all duration-300 ease-out transform hover:scale-[1.01]",
