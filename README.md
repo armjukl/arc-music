@@ -140,3 +140,14 @@ arc-music/
 - **播放器组件拆分**：将曲库、PC 播放器、移动端播放器、歌曲信息弹窗、类型和工具函数拆分为独立文件，保留原有 PC/移动端 UI 与交互。
 - **客户端限流移除**：不再在浏览器端限制请求频率，统一由服务端处理限流。
 - **播放历史**：在浏览器本地记录最近播放的歌曲，支持清空和单条删除；历史歌曲可作为播放列表连续播放，且不保存临时播放链接。
+
+## Bilibili API Hub
+
+The player includes a `Bilibili（Music API Hub）` adapter. The current Hub
+address is hardcoded in `api/bilibili.ts` as `http://154.36.187.103:8787`;
+change the `MUSIC_API_HUB_BASE` constant there when needed. Select that API and
+the `Bilibili` source in the player before searching.
+
+The adapter uses the Hub search and resolve endpoints, then plays the cached
+MP3 `download_url` returned by the Hub. Short-lived Bilibili upstream media
+URLs are not stored in the browser.

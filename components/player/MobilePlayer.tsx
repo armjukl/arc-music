@@ -41,8 +41,10 @@ type MobilePlayerProps = {
   playbackMode: PlaybackMode;
   playButtonRef: React.RefObject<HTMLButtonElement>;
   volume: number;
+  isFavorite: boolean;
   onSetExpanded: (expanded: boolean) => void;
   onShowTrackInfo: (track: Track) => void;
+  onToggleFavorite: (track: Track) => void;
   onToggleTranslation: () => void;
   onToggleLyricsExpanded: () => void;
   onProgressMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -79,8 +81,10 @@ export function MobilePlayer({
   playbackMode,
   playButtonRef,
   volume,
+  isFavorite,
   onSetExpanded,
   onShowTrackInfo,
+  onToggleFavorite,
   onToggleTranslation,
   onToggleLyricsExpanded,
   onProgressMouseDown,
@@ -133,10 +137,10 @@ export function MobilePlayer({
         >
           {coverNodeSmall}
           <div className="min-w-0">
-            <p className="font-semibold text-slate-900 truncate">
+            <p className="font-semibold text-sm leading-5 text-slate-900 line-clamp-2 break-words">
               {currentSong?.name ?? "未选择"}
             </p>
-            <p className="text-sm text-slate-600 truncate">
+            <p className="text-xs text-slate-600 truncate">
               {currentSong?.artist ?? ""}
             </p>
           </div>
@@ -203,16 +207,24 @@ export function MobilePlayer({
         >
           <div className="flex items-center">
             {coverNodeSmall}
-            <div>
-              <p className="font-bold text-lg text-slate-900">
+            <div className="min-w-0">
+              <p className="font-bold text-base leading-5 text-slate-900 line-clamp-2 break-words">
                 {currentSong?.name ?? "未选择"}
               </p>
-              <p className="text-slate-600">{currentSong?.artist ?? ""}</p>
+              <p className="text-sm text-slate-600 truncate">{currentSong?.artist ?? ""}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2 text-slate-600">
-            <button className="p-2 hover:text-slate-800 transition-colors">
-              <Heart size={20} />
+            <button
+              type="button"
+              aria-label={isFavorite ? "取消收藏" : "收藏"}
+              onClick={() => {
+                if (currentSong) onToggleFavorite(currentSong);
+              }}
+              disabled={!currentSong}
+              className="p-2 hover:text-slate-800 transition-colors disabled:opacity-40"
+            >
+              <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
             </button>
             <button
               onClick={() => {

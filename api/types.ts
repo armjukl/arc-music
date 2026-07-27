@@ -1,4 +1,4 @@
-export type MusicApiId = 'gdstudio';
+export type MusicApiId = 'gdstudio' | 'bilibili';
 
 export type ApiResourceType = 'lyric' | 'pic';
 
@@ -7,6 +7,7 @@ export type ApiSearchItem = {
   name?: string;
   artist?: string[] | string;
   album?: string;
+  duration?: string;
   pic_id?: string;
   lyric_id?: string;
   source?: string;

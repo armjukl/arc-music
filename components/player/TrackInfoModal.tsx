@@ -17,6 +17,7 @@ const SOURCE_LABELS: { value: MusicSource; label: string }[] = [
   { value: "netease", label: "网易云" },
   { value: "kuwo", label: "酷我" },
   { value: "joox", label: "JOOX" },
+  { value: "bilibili", label: "Bilibili" },
 ];
 
 export function TrackInfoModal({

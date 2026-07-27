@@ -265,6 +265,8 @@ export function TrackList({
       {displayedTracks.map((song, index) => {
         const isCurrentSong =
           !showingPlaybackHistory && !showingFavorites && index === currentSongIndex;
+        const isBilibiliSearchResult =
+          showingSearchResults && song.apiId === "bilibili";
         return (
           <div
             key={`${song.apiId}-${song.id}`}
@@ -327,15 +329,17 @@ export function TrackList({
             <div className="flex-1 min-w-0">
               <p
                 className={clsx(
-                  "font-semibold truncate",
+                  "font-semibold text-sm leading-5 line-clamp-2 break-words md:text-base md:leading-normal md:line-clamp-1 md:truncate",
                   isCurrentSong ? "text-slate-900" : "text-slate-700",
                 )}
               >
                 {song.name}
               </p>
-              <p className="text-sm text-slate-500 truncate">
-                {song.artist ?? ""}
-              </p>
+              {!isBilibiliSearchResult && (
+                <p className="text-sm text-slate-500 truncate">
+                  {song.artist ?? ""}
+                </p>
+              )}
             </div>
             <div className="flex items-center space-x-3">
               {showingPlaybackHistory && (
@@ -374,11 +378,16 @@ export function TrackList({
                     : "hover:text-sky-600",
                 )}
               >
-                <Heart size={16} />
+                <Heart
+                  size={16}
+                  fill={isFavorite(song) ? "currentColor" : "none"}
+                />
               </button>
-              <span className="text-sm text-slate-500">
-                {song.duration ?? ""}
-              </span>
+              {!isBilibiliSearchResult && (
+                <span className="text-sm text-slate-500">
+                  {song.duration ?? ""}
+                </span>
+              )}
             </div>
           </div>
         );

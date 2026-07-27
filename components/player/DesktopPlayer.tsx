@@ -25,7 +25,9 @@ type DesktopPlayerProps = {
   playbackMode: PlaybackMode;
   playButtonRef: React.RefObject<HTMLButtonElement>;
   volume: number;
+  isFavorite: boolean;
   onShowTrackInfo: (track: Track) => void;
+  onToggleFavorite: (track: Track) => void;
   onToggleTranslation: () => void;
   onToggleLyricsExpanded: () => void;
   onProgressMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -61,7 +63,9 @@ export function DesktopPlayer({
   playbackMode,
   playButtonRef,
   volume,
+  isFavorite,
   onShowTrackInfo,
+  onToggleFavorite,
   onToggleTranslation,
   onToggleLyricsExpanded,
   onProgressMouseDown,
@@ -131,8 +135,16 @@ export function DesktopPlayer({
           </div>
         </div>
         <div className="flex items-center space-x-4 text-slate-600">
-          <button className="p-2 hover:text-slate-800 transition-colors">
-            <Heart size={20} />
+          <button
+            type="button"
+            aria-label={isFavorite ? "取消收藏" : "收藏"}
+            onClick={() => {
+              if (currentSong) onToggleFavorite(currentSong);
+            }}
+            disabled={!currentSong}
+            className="p-2 hover:text-slate-800 transition-colors disabled:opacity-40"
+          >
+            <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
           </button>
           <button
             onClick={() => {

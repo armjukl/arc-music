@@ -34,10 +34,14 @@ import {
 const DEFAULT_SEARCH_COUNT = 8;
 const DEFAULT_COVER_SIZE = "300";
 
-const AVAILABLE_SOURCES: { value: MusicSource; label: string }[] = [
+const GDSTUDIO_SOURCES: { value: MusicSource; label: string }[] = [
   { value: "netease", label: "网易云" },
   { value: "kuwo", label: "酷我" },
   { value: "joox", label: "JOOX" },
+];
+
+const BILIBILI_SOURCES: { value: MusicSource; label: string }[] = [
+  { value: "bilibili", label: "Bilibili" },
 ];
 
 const DEFAULT_SOURCE: MusicSource = "netease";
@@ -140,6 +144,12 @@ const MusicPlayer = () => {
 
   const currentSong =
     currentSongIndex >= 0 ? musicList[currentSongIndex] : undefined;
+  const isCurrentSongFavorite = currentSong
+    ? favorites.some(
+        (favorite) =>
+          favorite.id === currentSong.id && favorite.apiId === currentSong.apiId,
+      )
+    : false;
 
   useEffect(() => {
     try {
@@ -972,7 +982,7 @@ const MusicPlayer = () => {
             name: item.name ?? trimmedKeyword,
             artist: artistText,
             album: item.album ?? "",
-            duration: "",
+            duration: item.duration ?? "",
             apiId,
             source,
             keyword: trimmedKeyword,
@@ -1213,10 +1223,17 @@ const MusicPlayer = () => {
     (apiId: MusicApiId) => {
       if (apiId === selectedApiId) return;
 
+      const nextSource: MusicSource =
+        apiId === "bilibili"
+          ? "bilibili"
+          : selectedSource === "bilibili"
+            ? "netease"
+            : selectedSource;
       setSelectedApiId(apiId);
+      setSelectedSource(nextSource);
       if (searchTerm.trim()) {
         setSearchPageInput("1");
-        void performSearch(apiId, selectedSource, searchTerm.trim(), 1);
+        void performSearch(apiId, nextSource, searchTerm.trim(), 1);
       } else {
         const activeTrack =
           soundRef.current && currentSongIndex >= 0
@@ -1225,7 +1242,7 @@ const MusicPlayer = () => {
         searchRequestIdRef.current += 1;
         setIsSearching(false);
         const filtered = localTracks.filter(
-          (track) => track.apiId === apiId && track.source === selectedSource,
+          (track) => track.apiId === apiId && track.source === nextSource,
         );
         setAllTracks(filtered);
         if (activeTrack) {
@@ -1484,7 +1501,9 @@ const MusicPlayer = () => {
         {/* 移动端：底部小播放器，可展开半屏；桌面端：右侧 1/3 宽 */}
         {/* 左侧/下方：歌曲列表 */}
         <LibraryPanel
-          availableSources={AVAILABLE_SOURCES}
+          availableSources={
+            selectedApiId === "bilibili" ? BILIBILI_SOURCES : GDSTUDIO_SOURCES
+          }
           bitrateOptions={BITRATE_OPTIONS}
           currentSongIndex={currentSongIndex}
           errorMessage={errorMessage}
@@ -1558,11 +1577,13 @@ const MusicPlayer = () => {
           currentTime={currentTime}
           duration={duration}
           playbackMode={playbackMode}
-          playButtonRef={desktopPlayBtnRef}
-          volume={volume}
-          onShowTrackInfo={(track) => {
-            void handleShowTrackInfo(track);
-          }}
+           playButtonRef={desktopPlayBtnRef}
+           volume={volume}
+           isFavorite={isCurrentSongFavorite}
+           onShowTrackInfo={(track) => {
+             void handleShowTrackInfo(track);
+           }}
+           onToggleFavorite={handleToggleFavorite}
           onToggleTranslation={() =>
             setShowTranslation((previous) => !previous)
           }
@@ -1600,12 +1621,14 @@ const MusicPlayer = () => {
           currentTime={currentTime}
           duration={duration}
           playbackMode={playbackMode}
-          playButtonRef={mobilePlayBtnRef}
-          volume={volume}
-          onSetExpanded={setMobileExpanded}
-          onShowTrackInfo={(track) => {
-            void handleShowTrackInfo(track);
-          }}
+           playButtonRef={mobilePlayBtnRef}
+           volume={volume}
+           isFavorite={isCurrentSongFavorite}
+           onSetExpanded={setMobileExpanded}
+           onShowTrackInfo={(track) => {
+             void handleShowTrackInfo(track);
+           }}
+           onToggleFavorite={handleToggleFavorite}
           onToggleTranslation={() =>
             setShowTranslation((previous) => !previous)
           }

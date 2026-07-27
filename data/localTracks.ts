@@ -1,6 +1,6 @@
 import type { MusicApiId } from '../api/types';
 
-export type MusicSource = 'netease' | 'kuwo' | 'joox';
+export type MusicSource = 'netease' | 'kuwo' | 'joox' | 'bilibili';
 
 export const BITRATE_OPTIONS = [128, 192, 320, 740, 999] as const;
 
