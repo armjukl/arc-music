@@ -32,6 +32,7 @@ import {
 
 const DEFAULT_SEARCH_COUNT = 8;
 const DEFAULT_COVER_SIZE = "300";
+const ENABLE_TRACK_METADATA_REQUESTS = false;
 
 const GDSTUDIO_SOURCES: { value: MusicSource; label: string }[] = [
   { value: "netease", label: "网易云" },
@@ -540,6 +541,8 @@ const MusicPlayer = () => {
 
   const loadAuxiliaryResources = useCallback(
     async (track: Track): Promise<Track> => {
+      if (!ENABLE_TRACK_METADATA_REQUESTS) return track;
+
       const key = trackResourceKey(track);
       const pending = metadataRequestsRef.current.get(key);
       if (pending) return pending;
