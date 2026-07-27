@@ -635,10 +635,8 @@ const MusicPlayer = () => {
 
         recordPlaybackHistory(resolvedTrack);
 
-        const previousAudio = soundRef.current;
-        soundRef.current = null;
-        if (previousAudio) {
-          disposeAudio(previousAudio);
+        if (soundRef.current) {
+          disposeAudio(soundRef.current);
         }
 
         autoPlayRef.current = autoplay;
@@ -869,10 +867,8 @@ const MusicPlayer = () => {
   const resetPlayer = useCallback(() => {
     playRequestIdRef.current += 1;
     setLoadingTrackIndex(null);
-    const previousAudio = soundRef.current;
-    soundRef.current = null;
-    if (previousAudio) {
-      disposeAudio(previousAudio);
+    if (soundRef.current) {
+      disposeAudio(soundRef.current);
     }
     setIsPlaying(false);
     setCurrentSongIndex(-1);
@@ -886,20 +882,9 @@ const MusicPlayer = () => {
   useEffect(() => {
     if (!currentSong || !currentSong.url) return;
 
-    const previousAudio = soundRef.current;
-    soundRef.current = null;
-    if (previousAudio) {
-      disposeAudio(previousAudio);
-    }
-
-    // Use the native audio element directly. This is more reliable on older
-    // iOS Safari than Howler's HTML5 audio pool, especially for CDN URLs.
-    const audio = document.createElement("audio");
-    audio.preload = "auto";
-    audio.style.display = "none";
-    document.body.appendChild(audio);
-    audio.src = currentSong.url;
-    audio.volume = volume;
+    const audio = soundRef.current;
+    if (!audio) return;
+    let disposed = false;
 
     const handlePlay = () => {
       setIsPlaying(true);
@@ -925,7 +910,7 @@ const MusicPlayer = () => {
       }
     };
     const handleError = () => {
-      if (soundRef.current !== audio) return;
+      if (disposed || soundRef.current !== audio) return;
       setIsPlaying(false);
       stopProgressTimer();
       setErrorMessage("音频加载失败，请重试");
@@ -936,7 +921,9 @@ const MusicPlayer = () => {
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("error", handleError);
-    soundRef.current = audio;
+    audio.preload = "auto";
+    audio.volume = volume;
+    audio.src = currentSong.url;
 
     if (autoPlayRef.current) {
       autoPlayRef.current = false;
@@ -946,16 +933,15 @@ const MusicPlayer = () => {
     }
 
     return () => {
+      disposed = true;
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("error", handleError);
       if (soundRef.current === audio) {
-        soundRef.current = null;
         disposeAudio(audio);
       }
-      audio.parentNode?.removeChild(audio);
       stopProgressTimer();
     };
   }, [currentSong?.url]);
@@ -1563,6 +1549,12 @@ const MusicPlayer = () => {
 
   return (
     <div className="relative min-h-screen text-slate-800">
+      <audio
+        ref={soundRef}
+        preload="auto"
+        aria-hidden="true"
+        style={{ display: "none" }}
+      />
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div
           className="h-full w-full bg-center bg-cover scale-105 transform"
