@@ -53,6 +53,11 @@ export default function handler(
     }
   }
 
+  const requestId = Math.random().toString(36).slice(2, 8);
+  console.info(
+    `[music-hub:${requestId}] ${request.method ?? "GET"} ${target.pathname}${target.search}`,
+  );
+
   const headers: Record<string, string> = {};
   for (const headerName of FORWARDED_REQUEST_HEADERS) {
     const value = request.headers[headerName];
@@ -67,6 +72,9 @@ export default function handler(
     },
     (upstreamResponse) => {
       response.statusCode = upstreamResponse.statusCode ?? 502;
+      console.info(
+        `[music-hub:${requestId}] upstream=${response.statusCode} content-type=${upstreamResponse.headers["content-type"] ?? "-"} content-range=${upstreamResponse.headers["content-range"] ?? "-"}`,
+      );
       for (const headerName of FORWARDED_RESPONSE_HEADERS) {
         const value = upstreamResponse.headers[headerName];
         if (typeof value === "string") response.setHeader(headerName, value);
@@ -76,6 +84,7 @@ export default function handler(
   );
 
   upstreamRequest.on("error", (error) => {
+    console.error(`[music-hub:${requestId}] error=${error.message}`);
     if (response.headersSent) {
       response.end();
       return;

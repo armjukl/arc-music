@@ -11,10 +11,17 @@ import {
 } from './types';
 
 const GDSTUDIO_API_BASE = 'https://music-api.gdstudio.xyz/api.php';
+const GDSTUDIO_PROXY_PATH = '/api/gdstudio';
 const GDSTUDIO_AUDIO_PROXY_PATH = '/api/gdstudio/audio';
 
 function buildUrl(params: Record<string, string>): string {
-  return `${GDSTUDIO_API_BASE}?${new URLSearchParams(params).toString()}`;
+  const url = new URL(
+    typeof window === 'undefined'
+      ? GDSTUDIO_API_BASE
+      : `${window.location.origin}${GDSTUDIO_PROXY_PATH}`,
+  );
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  return url.toString();
 }
 
 async function request<T>(params: Record<string, string>): Promise<T> {

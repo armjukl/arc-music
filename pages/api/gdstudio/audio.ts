@@ -47,6 +47,11 @@ export default function handler(
     return;
   }
 
+  const requestId = Math.random().toString(36).slice(2, 8);
+  console.info(
+    `[gdstudio-audio:${requestId}] ${request.method} ${target.hostname}${target.pathname} range=${request.headers.range ?? "-"}`,
+  );
+
   const client = target.protocol === "https:" ? https : http;
   const upstreamRequest = client.get(
     target,
@@ -60,6 +65,9 @@ export default function handler(
     },
     (upstreamResponse) => {
       response.statusCode = upstreamResponse.statusCode ?? 502;
+      console.info(
+        `[gdstudio-audio:${requestId}] upstream=${response.statusCode} content-type=${upstreamResponse.headers["content-type"] ?? "-"} content-range=${upstreamResponse.headers["content-range"] ?? "-"}`,
+      );
       const contentType = upstreamResponse.headers["content-type"];
       response.setHeader(
         "Content-Type",
@@ -81,6 +89,7 @@ export default function handler(
   );
 
   upstreamRequest.on("error", (error) => {
+    console.error(`[gdstudio-audio:${requestId}] error=${error.message}`);
     if (response.headersSent) {
       response.end();
       return;
