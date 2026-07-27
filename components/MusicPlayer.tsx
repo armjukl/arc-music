@@ -401,15 +401,27 @@ const MusicPlayer = () => {
     isDraggingProgress,
   ]);
 
-  const updateTrackInStates = useCallback((updated: Track) => {
+  const updateTrackInStates = useCallback((updated: Track, merge = false) => {
+    const applyUpdate = (item: Track): Track => {
+      if (item.id !== updated.id) return item;
+      if (!merge) return updated;
+
+      const next = { ...item, ...updated };
+      if (updated.url === undefined && item.url) next.url = item.url;
+      if (!updated.cover && item.cover) next.cover = item.cover;
+      if (!updated.lyric && item.lyric) next.lyric = item.lyric;
+      if (!updated.tLyric && item.tLyric) next.tLyric = item.tLyric;
+      return next;
+    };
+
     setLocalTracks((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item)),
+      prev.map(applyUpdate),
     );
     setAllTracks((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item)),
+      prev.map(applyUpdate),
     );
     setMusicList((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item)),
+      prev.map(applyUpdate),
     );
   }, []);
 
@@ -523,7 +535,7 @@ const MusicPlayer = () => {
         fileSizeKb,
       };
 
-      updateTrackInStates(resolvedTrack);
+      updateTrackInStates(resolvedTrack, true);
 
       const loadAuxiliaryResources = async (): Promise<Track> => {
         let cover = resolvedTrack.cover ?? null;
@@ -581,7 +593,7 @@ const MusicPlayer = () => {
           lyric: nextLyric,
           tLyric: nextTranslation,
         };
-        updateTrackInStates(enrichedTrack);
+        updateTrackInStates(enrichedTrack, true);
         return enrichedTrack;
       };
 
@@ -646,7 +658,7 @@ const MusicPlayer = () => {
         return;
       }
 
-      updateTrackInStates({ ...track, cover, lyric, tLyric });
+      updateTrackInStates({ ...track, cover, lyric, tLyric }, true);
     };
 
     void loadAuxiliaryResources();
