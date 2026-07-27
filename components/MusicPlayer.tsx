@@ -64,6 +64,37 @@ function trackResourceKey(track: Track): string {
   ].join(":");
 }
 
+function createSilentAudioDataUrl(): string {
+  const sampleRate = 8_000;
+  const sampleCount = sampleRate / 10;
+  const dataSize = sampleCount * 2;
+  const bytes = new Uint8Array(44 + dataSize);
+  const view = new DataView(bytes.buffer);
+  const writeText = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) {
+      bytes[offset + index] = value.charCodeAt(index);
+    }
+  };
+
+  writeText(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeText(8, "WAVE");
+  writeText(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeText(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `data:audio/wav;base64,${btoa(binary)}`;
+}
+
 function disposeAudio(audio: HTMLAudioElement): void {
   audio.pause();
   audio.removeAttribute("src");
@@ -172,6 +203,12 @@ const MusicPlayer = () => {
 
   const soundRef = useRef<HTMLAudioElement | null>(null);
   const metadataRequestsRef = useRef(new Map<string, Promise<Track>>());
+  const audioPrimingRef = useRef(false);
+  const audioPrimeStateRef = useRef<{
+    audio: HTMLAudioElement;
+    muted: boolean;
+    loop: boolean;
+  } | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const playbackModeRef = useRef<PlaybackMode>("order");
   const playRequestIdRef = useRef(0);
@@ -448,6 +485,39 @@ const MusicPlayer = () => {
     );
   }, []);
 
+  const finishAudioPriming = useCallback((audio: HTMLAudioElement | null) => {
+    const state = audioPrimeStateRef.current;
+    if (!state || !audio || state.audio !== audio) return;
+    audio.muted = state.muted;
+    audio.loop = state.loop;
+    audioPrimeStateRef.current = null;
+    audioPrimingRef.current = false;
+  }, []);
+
+  const primeAudioForPlayback = useCallback(() => {
+    const audio = soundRef.current;
+    if (!audio || audioPrimeStateRef.current) return;
+
+    audioPrimeStateRef.current = {
+      audio,
+      muted: audio.muted,
+      loop: audio.loop,
+    };
+    audioPrimingRef.current = true;
+    audio.muted = true;
+    audio.loop = true;
+    audio.src = createSilentAudioDataUrl();
+
+    try {
+      const result = audio.play();
+      if (result && typeof result.catch === "function") {
+        result.catch(() => finishAudioPriming(audio));
+      }
+    } catch {
+      finishAudioPriming(audio);
+    }
+  }, [finishAudioPriming]);
+
   const recordPlaybackHistory = useCallback((track: Track) => {
     const historyTrack = toPlaybackHistoryTrack(track);
 
@@ -677,10 +747,13 @@ const MusicPlayer = () => {
             : (originalTrack.fileSizeKb ?? null),
         };
 
-        updateTrackInStates(baseTrack);
         if (soundRef.current) {
           soundRef.current.pause();
         }
+        if (autoplay) {
+          primeAudioForPlayback();
+        }
+        updateTrackInStates(baseTrack);
         setProgress(0);
         setCurrentTime(0);
         setDuration(0);
@@ -700,6 +773,7 @@ const MusicPlayer = () => {
         if (!audio || !resolvedTrack.url) {
           throw new Error("未获取到播放器");
         }
+        finishAudioPriming(audio);
         audio.volume = volume;
         audio.src = resolvedTrack.url;
         if (autoplay) {
@@ -711,6 +785,11 @@ const MusicPlayer = () => {
         recordPlaybackHistory(resolvedTrack);
       } catch (err: unknown) {
         if (playRequestIdRef.current === requestId) {
+          const audio = soundRef.current;
+          if (audio) {
+            finishAudioPriming(audio);
+            audio.pause();
+          }
           const message =
             err instanceof Error ? err.message : "播放失败，请稍后重试";
           setErrorMessage(message);
@@ -723,11 +802,13 @@ const MusicPlayer = () => {
     },
     [
       ensureTrackResolved,
+      finishAudioPriming,
       musicList,
       loadingTrackIndex,
       selectedBitrate,
       updateTrackInStates,
       recordPlaybackHistory,
+      primeAudioForPlayback,
       volume,
     ],
   );
@@ -933,6 +1014,7 @@ const MusicPlayer = () => {
     playRequestIdRef.current += 1;
     setLoadingTrackIndex(null);
     if (soundRef.current) {
+      finishAudioPriming(soundRef.current);
       disposeAudio(soundRef.current);
     }
     setIsPlaying(false);
@@ -941,7 +1023,7 @@ const MusicPlayer = () => {
     setProgress(0);
     setCurrentTime(0);
     setDuration(0);
-  }, []);
+  }, [finishAudioPriming]);
 
   // Keep the audio element and its handlers stable. playSong assigns src and
   // calls play immediately after the URL request, matching mkmusic-next.
@@ -973,7 +1055,7 @@ const MusicPlayer = () => {
       }
     };
     const handleError = () => {
-      if (soundRef.current !== audio) return;
+      if (audioPrimingRef.current || soundRef.current !== audio) return;
       setIsPlaying(false);
       stopProgressTimer();
       setErrorMessage("音频加载失败，请重试");
