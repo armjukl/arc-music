@@ -32,7 +32,8 @@ import {
 
 const DEFAULT_SEARCH_COUNT = 8;
 const DEFAULT_COVER_SIZE = "300";
-const ENABLE_TRACK_METADATA_REQUESTS = false;
+const ENABLE_COVER_REQUESTS = false;
+const ENABLE_LYRIC_REQUESTS = true;
 
 const GDSTUDIO_SOURCES: { value: MusicSource; label: string }[] = [
   { value: "netease", label: "网易云" },
@@ -541,7 +542,7 @@ const MusicPlayer = () => {
 
   const loadAuxiliaryResources = useCallback(
     async (track: Track): Promise<Track> => {
-      if (!ENABLE_TRACK_METADATA_REQUESTS) return track;
+      if (!ENABLE_COVER_REQUESTS && !ENABLE_LYRIC_REQUESTS) return track;
 
       const key = trackResourceKey(track);
       const pending = metadataRequestsRef.current.get(key);
@@ -550,7 +551,7 @@ const MusicPlayer = () => {
       const request = (async () => {
         const api = getMusicApi(track.apiId);
         const picPromise =
-          track.cover || !track.picId
+        !ENABLE_COVER_REQUESTS || track.cover || !track.picId
             ? Promise.resolve(null)
             : api
                 .getPic({
@@ -560,7 +561,7 @@ const MusicPlayer = () => {
                 })
                 .catch(() => null);
         const lyricPromise =
-          track.lyric || !track.lyricId
+        !ENABLE_LYRIC_REQUESTS || track.lyric || !track.lyricId
             ? Promise.resolve(null)
             : api
                 .getLyric({ source: track.source, id: track.lyricId })
