@@ -47,8 +47,10 @@ const BILIBILI_SOURCES: { value: MusicSource; label: string }[] = [
 const DEFAULT_SOURCE: MusicSource = "netease";
 const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
 const FAVORITES_STORAGE_KEY = "arc-music-favorites";
+const PERFORMANCE_MODE_STORAGE_KEY = "arc-music-performance-mode";
 const MAX_PLAYBACK_HISTORY = 50;
 const MAX_FAVORITES = 50;
+type PerformanceMode = "normal" | "low";
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map((track) =>
   createTrack(track, DEFAULT_MUSIC_API_ID),
 );
@@ -128,6 +130,8 @@ const MusicPlayer = () => {
   const [favorites, setFavorites] = useState<FavoriteTrack[]>([]);
   const [showingFavorites, setShowingFavorites] = useState(false);
   const [pendingHistoryIndex, setPendingHistoryIndex] = useState<number | null>(null);
+  const [performanceMode, setPerformanceMode] =
+    useState<PerformanceMode>("normal");
 
   const soundRef = useRef<Howl | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -193,6 +197,17 @@ const MusicPlayer = () => {
       }
     } catch {
       window.localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PERFORMANCE_MODE_STORAGE_KEY);
+      if (stored === "normal" || stored === "low") {
+        setPerformanceMode(stored);
+      }
+    } catch {
+      // Keep the default mode when storage is unavailable.
     }
   }, []);
 
@@ -360,7 +375,8 @@ const MusicPlayer = () => {
       if (typeof container.scrollTo === "function") {
         container.scrollTo({
           top: Math.max(offset, 0),
-          behavior: isDraggingProgress ? "auto" : "smooth",
+          behavior:
+            isDraggingProgress || performanceMode === "low" ? "auto" : "smooth",
         });
       } else {
         container.scrollTop = Math.max(offset, 0);
@@ -373,7 +389,17 @@ const MusicPlayer = () => {
     lyricsExpanded,
     mobileExpanded,
     isDraggingProgress,
+    performanceMode,
   ]);
+
+  const handlePerformanceModeChange = useCallback((mode: PerformanceMode) => {
+    setPerformanceMode(mode);
+    try {
+      window.localStorage.setItem(PERFORMANCE_MODE_STORAGE_KEY, mode);
+    } catch {
+      // Keep the in-memory preference when storage is unavailable.
+    }
+  }, []);
 
   const updateTrackInStates = useCallback((updated: Track) => {
     setLocalTracks((prev) =>
@@ -1474,7 +1500,11 @@ const MusicPlayer = () => {
   };
 
   return (
-    <div className="relative min-h-screen text-slate-800">
+    <div
+      className={`relative min-h-screen text-slate-800${
+        performanceMode === "low" ? " low-performance" : ""
+      }`}
+    >
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div
           className="h-full w-full bg-center bg-cover scale-105 transform"
@@ -1509,6 +1539,7 @@ const MusicPlayer = () => {
           selectedApiId={selectedApiId}
           selectedBitrate={selectedBitrate}
           selectedSource={selectedSource}
+          performanceMode={performanceMode}
           showingSearchResults={showingSearchResults}
           showingPlaybackHistory={showingPlaybackHistory}
           showingFavorites={showingFavorites}
@@ -1533,6 +1564,7 @@ const MusicPlayer = () => {
             void handleShowTrackInfo(track);
           }}
           onSourceChange={handleSourceChange}
+          onPerformanceModeChange={handlePerformanceModeChange}
           onToggleFavorite={handleToggleFavorite}
           onReorderFavorites={handleReorderFavorites}
           onTogglePlaybackHistory={() => {
