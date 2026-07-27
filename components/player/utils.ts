@@ -29,7 +29,12 @@ export function parseLyricLines(lyric: string | null | undefined): LyricLine[] {
 
   for (const line of lines) {
     const text = line.replace(timeTagRegex, "").trim();
-    const matches = [...line.matchAll(timeTagRegex)];
+    const matches: RegExpExecArray[] = [];
+    timeTagRegex.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = timeTagRegex.exec(line)) !== null) {
+      matches.push(match);
+    }
     if (matches.length === 0) {
       if (text.length > 0)
         result.push({ time: Number.POSITIVE_INFINITY, text });
