@@ -11,6 +11,7 @@ import {
 } from './types';
 
 const GDSTUDIO_API_BASE = 'https://music-api.gdstudio.xyz/api.php';
+const GDSTUDIO_AUDIO_PROXY_PATH = '/api/gdstudio/audio';
 
 function buildUrl(params: Record<string, string>): string {
   return `${GDSTUDIO_API_BASE}?${new URLSearchParams(params).toString()}`;
@@ -22,6 +23,13 @@ async function request<T>(params: Record<string, string>): Promise<T> {
     throw new Error('音乐服务暂时不可用');
   }
   return (await response.json()) as T;
+}
+
+function buildPlaybackUrl(url: string): string {
+  if (typeof window === 'undefined') return url;
+  const proxyUrl = new URL(GDSTUDIO_AUDIO_PROXY_PATH, window.location.origin);
+  proxyUrl.searchParams.set('url', url);
+  return proxyUrl.toString();
 }
 
 export const gdstudioApi: MusicApi = {
@@ -36,12 +44,15 @@ export const gdstudioApi: MusicApi = {
     pages: String(params.page),
   }),
 
-  getUrl: (params: MusicApiUrlParams): Promise<ApiUrlResponse> => request<ApiUrlResponse>({
-    types: 'url',
-    source: params.source,
-    id: params.id,
-    br: String(params.bitrate),
-  }),
+  getUrl: async (params: MusicApiUrlParams): Promise<ApiUrlResponse> => {
+    const data = await request<ApiUrlResponse>({
+      types: 'url',
+      source: params.source,
+      id: params.id,
+      br: String(params.bitrate),
+    });
+    return data.url ? { ...data, url: buildPlaybackUrl(data.url) } : data;
+  },
 
   getPic: (params: MusicApiResourceParams): Promise<ApiPicResponse> => request<ApiPicResponse>({
     types: 'pic',

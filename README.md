@@ -152,3 +152,6 @@ The adapter uses the Hub search and resolve endpoints through the same-origin
 Next.js proxy at `/api/music-hub`, then plays the cached MP3 `download_url`
 returned by the Hub. Short-lived Bilibili upstream media URLs are not stored in
 the browser.
+
+GDStudio playback is also normalized through `/api/gdstudio/audio` so older
+Safari versions receive a same-origin `audio/mpeg` response with Range support.
