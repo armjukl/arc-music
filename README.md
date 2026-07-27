@@ -148,6 +148,7 @@ address is hardcoded in `api/bilibili.ts` as `http://154.36.187.103:8787`;
 change the `MUSIC_API_HUB_BASE` constant there when needed. Select that API and
 the `Bilibili` source in the player before searching.
 
-The adapter uses the Hub search and resolve endpoints, then plays the cached
-MP3 `download_url` returned by the Hub. Short-lived Bilibili upstream media
-URLs are not stored in the browser.
+The adapter uses the Hub search and resolve endpoints through the same-origin
+Next.js proxy at `/api/music-hub`, then plays the cached MP3 `download_url`
+returned by the Hub. Short-lived Bilibili upstream media URLs are not stored in
+the browser.

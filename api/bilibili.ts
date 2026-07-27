@@ -12,6 +12,7 @@ import {
 
 // Change this single constant when the Bilibili API Hub address changes.
 const MUSIC_API_HUB_BASE = 'http://154.36.187.103:8787';
+const MUSIC_API_HUB_PROXY_BASE = '/api/music-hub';
 
 type HubTrack = {
   source?: string;
@@ -32,7 +33,11 @@ type HubResolvedAudio = HubTrack & {
 };
 
 function buildUrl(path: string, params: Record<string, string>): string {
-  const url = new URL(`${MUSIC_API_HUB_BASE}${path}`);
+  const base =
+    typeof window === 'undefined'
+      ? MUSIC_API_HUB_BASE
+      : `${window.location.origin}${MUSIC_API_HUB_PROXY_BASE}`;
+  const url = new URL(`${base}${path}`);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   return url.toString();
 }
@@ -40,7 +45,18 @@ function buildUrl(path: string, params: Record<string, string>): string {
 function resolveMediaUrl(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
   try {
-    return new URL(value, `${MUSIC_API_HUB_BASE}/`).toString();
+    if (typeof window !== 'undefined' && value.startsWith('/api/bilibili/')) {
+      return new URL(
+        `${MUSIC_API_HUB_PROXY_BASE}${value}`,
+        window.location.origin,
+      ).toString();
+    }
+    return new URL(
+      value,
+      typeof window === 'undefined'
+        ? `${MUSIC_API_HUB_BASE}/`
+        : window.location.origin,
+    ).toString();
   } catch {
     return undefined;
   }
