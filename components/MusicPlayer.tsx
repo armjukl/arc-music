@@ -445,14 +445,64 @@ const MusicPlayer = () => {
     });
   }, []);
 
+  const loadAuxiliaryResources = useCallback(
+    async (track: Track): Promise<Track> => {
+      const api = getMusicApi(track.apiId);
+      const picPromise =
+        track.cover || !track.picId
+          ? Promise.resolve(null)
+          : api
+              .getPic({
+                source: track.source,
+                id: track.picId,
+                size: DEFAULT_COVER_SIZE,
+              })
+              .catch(() => null);
+      const lyricPromise =
+        track.lyric || !track.lyricId
+          ? Promise.resolve(null)
+          : api
+              .getLyric({ source: track.source, id: track.lyricId })
+              .catch(() => null);
+
+      const [picData, lyricData] = await Promise.all([picPromise, lyricPromise]);
+      const cover =
+        picData && typeof picData.url === "string" && picData.url.trim()
+          ? picData.url
+          : track.cover ?? null;
+      const lyric =
+        lyricData && typeof lyricData.lyric === "string" && lyricData.lyric.trim()
+          ? lyricData.lyric
+          : track.lyric ?? null;
+      const tLyric =
+        lyricData &&
+        typeof lyricData.tlyric === "string" &&
+        lyricData.tlyric.trim()
+          ? lyricData.tlyric
+          : track.tLyric ?? null;
+
+      if (
+        cover === (track.cover ?? null) &&
+        lyric === (track.lyric ?? null) &&
+        tLyric === (track.tLyric ?? null)
+      ) {
+        return track;
+      }
+
+      const enrichedTrack = { ...track, cover, lyric, tLyric };
+      updateTrackInStates(enrichedTrack, true);
+      return enrichedTrack;
+    },
+    [updateTrackInStates],
+  );
+
   const ensureTrackResolved = useCallback(
     async (
       track: Track,
       desiredBitrate: BitrateOption,
-      options: { deferAuxiliaryResources?: boolean } = {},
     ): Promise<Track> => {
       if (track.url && track.bitrate === desiredBitrate) {
-        return track;
+        return loadAuxiliaryResources(track);
       }
 
       const keyword = (
@@ -503,25 +553,9 @@ const MusicPlayer = () => {
         }
       }
 
-      const urlData = await api.getUrl({
-        source: track.source,
-        id: trackId,
-        bitrate: desiredBitrate,
-      });
-
-      if (!urlData || !urlData.url) {
-        throw new Error("未获取到播放链接");
-      }
-
-      const resolvedUrl = sanitizeUrl(urlData.url);
-      const fileSizeKb =
-        typeof urlData.size === "number"
-          ? urlData.size / 1024
-          : (track.fileSizeKb ?? null);
-
-      const resolvedTrack: Track = {
+      const metadataTrack: Track = {
         ...track,
-        url: resolvedUrl,
+        url: undefined,
         trackId,
         picId,
         lyricId,
@@ -532,148 +566,34 @@ const MusicPlayer = () => {
         bitrate: desiredBitrate,
         lyric: track.lyric ?? null,
         tLyric: track.tLyric ?? null,
-        fileSizeKb,
+        fileSizeKb: track.fileSizeKb ?? null,
       };
 
+      const enrichedTrack = await loadAuxiliaryResources(metadataTrack);
+      const urlData = await api.getUrl({
+        source: track.source,
+        id: trackId,
+        bitrate: desiredBitrate,
+      });
+
+      if (!urlData || !urlData.url) {
+        throw new Error("未获取到播放链接");
+      }
+
+      const resolvedTrack: Track = {
+        ...enrichedTrack,
+        url: sanitizeUrl(urlData.url),
+        bitrate: desiredBitrate,
+        fileSizeKb:
+          typeof urlData.size === "number"
+            ? urlData.size / 1024
+            : (enrichedTrack.fileSizeKb ?? null),
+      };
       updateTrackInStates(resolvedTrack, true);
-
-      const loadAuxiliaryResources = async (): Promise<Track> => {
-        let cover = resolvedTrack.cover ?? null;
-        let nextLyric = resolvedTrack.lyric ?? null;
-        let nextTranslation = resolvedTrack.tLyric ?? null;
-
-        if (picId) {
-          try {
-            const picData = await api.getPic({
-              source: track.source,
-              id: picId,
-              size: DEFAULT_COVER_SIZE,
-            });
-            if (picData && typeof picData.url === "string" && picData.url.trim()) {
-              cover = picData.url;
-            }
-          } catch {
-            // Ignore cover fetch failure after playback has started.
-          }
-        }
-
-        if (!nextLyric && lyricId) {
-          try {
-            const lyricData = await api.getLyric({
-              source: track.source,
-              id: lyricId,
-            });
-            if (lyricData) {
-              if (typeof lyricData.lyric === "string" && lyricData.lyric.trim()) {
-                nextLyric = lyricData.lyric;
-              }
-              if (
-                typeof lyricData.tlyric === "string" &&
-                lyricData.tlyric.trim()
-              ) {
-                nextTranslation = lyricData.tlyric;
-              }
-            }
-          } catch {
-            // Ignore lyric fetch failure after playback has started.
-          }
-        }
-
-        if (
-          cover === resolvedTrack.cover &&
-          nextLyric === resolvedTrack.lyric &&
-          nextTranslation === resolvedTrack.tLyric
-        ) {
-          return resolvedTrack;
-        }
-
-        const enrichedTrack: Track = {
-          ...resolvedTrack,
-          cover,
-          lyric: nextLyric,
-          tLyric: nextTranslation,
-        };
-        updateTrackInStates(enrichedTrack, true);
-        return enrichedTrack;
-      };
-
-      if (options.deferAuxiliaryResources) {
-        return resolvedTrack;
-      }
-      return loadAuxiliaryResources();
+      return resolvedTrack;
     },
-    [updateTrackInStates],
+    [loadAuxiliaryResources],
   );
-
-  // Load cover art and lyrics after the current track is visible. These
-  // requests must not delay URL playback and must not update a later track.
-  useEffect(() => {
-    const track = currentSong;
-    if (!track) return;
-
-    const api = getMusicApi(track.apiId);
-    let cancelled = false;
-
-    const loadAuxiliaryResources = async () => {
-      const picPromise =
-        track.cover || !track.picId
-          ? Promise.resolve(null)
-          : api
-              .getPic({
-                source: track.source,
-                id: track.picId,
-                size: DEFAULT_COVER_SIZE,
-              })
-              .catch(() => null);
-      const lyricPromise =
-        track.lyric || !track.lyricId
-          ? Promise.resolve(null)
-          : api
-              .getLyric({ source: track.source, id: track.lyricId })
-              .catch(() => null);
-
-      const [picData, lyricData] = await Promise.all([picPromise, lyricPromise]);
-      if (cancelled) return;
-
-      const cover =
-        picData && typeof picData.url === "string" && picData.url.trim()
-          ? picData.url
-          : track.cover ?? null;
-      const lyric =
-        lyricData && typeof lyricData.lyric === "string" && lyricData.lyric.trim()
-          ? lyricData.lyric
-          : track.lyric ?? null;
-      const tLyric =
-        lyricData &&
-        typeof lyricData.tlyric === "string" &&
-        lyricData.tlyric.trim()
-          ? lyricData.tlyric
-          : track.tLyric ?? null;
-
-      if (
-        cover === (track.cover ?? null) &&
-        lyric === (track.lyric ?? null) &&
-        tLyric === (track.tLyric ?? null)
-      ) {
-        return;
-      }
-
-      updateTrackInStates({ ...track, cover, lyric, tLyric }, true);
-    };
-
-    void loadAuxiliaryResources();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    currentSong?.id,
-    currentSong?.apiId,
-    currentSong?.source,
-    currentSong?.trackId,
-    currentSong?.picId,
-    currentSong?.lyricId,
-    updateTrackInStates,
-  ]);
 
   const playSong = useCallback(
     async (index: number, autoplay = true) => {
@@ -714,9 +634,7 @@ const MusicPlayer = () => {
 
         let resolvedTrack = baseTrack;
         if (!resolvedTrack.url) {
-          resolvedTrack = await ensureTrackResolved(baseTrack, selectedBitrate, {
-            deferAuxiliaryResources: true,
-          });
+          resolvedTrack = await ensureTrackResolved(baseTrack, selectedBitrate);
         }
 
         if (playRequestIdRef.current !== requestId) {
