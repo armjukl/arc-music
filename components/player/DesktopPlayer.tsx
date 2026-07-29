@@ -142,7 +142,12 @@ export function DesktopPlayer({
               if (currentSong) onToggleFavorite(currentSong);
             }}
             disabled={!currentSong}
-            className="p-2 hover:text-slate-800 transition-colors disabled:opacity-40"
+            className={clsx(
+              "p-2 transition-colors disabled:opacity-40",
+              isFavorite
+                ? "text-red-500 hover:text-red-600"
+                : "hover:text-slate-800",
+            )}
           >
             <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
           </button>
