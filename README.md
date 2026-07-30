@@ -146,10 +146,17 @@ arc-music/
 
 ## Bilibili API Hub
 
-The player includes a `Bilibili（Music API Hub）` adapter. The current Hub
-address is hardcoded in `api/bilibili.ts` as `http://154.36.187.103:8787`;
-change the `MUSIC_API_HUB_BASE` constant there when needed. Select that API and
+The player includes a `Bilibili（Music API Hub）` adapter. Configure the Hub
+address with the server-only `MUSIC_API_HUB_BASE_URL` environment variable.
+For local development, add it to `.env.local`; for Vercel, add it in the
+project's Environment Variables settings, then redeploy. Select that API and
 the `Bilibili` source in the player before searching.
+
+### Vercel configuration
+
+1. Open the Vercel project, then go to **Settings** > **Environment Variables**.
+2. Create `MUSIC_API_HUB_BASE_URL` and set its value to your Music API Hub base URL, for example `http://your-music-api-hub.example:8787`.
+3. Select **Production** (and Preview if that deployment should use Bilibili), save it, then redeploy the project.
 
 The adapter uses the Hub search and resolve endpoints through the same-origin
 Next.js proxy at `/api/music-hub`, then plays the cached MP3 `download_url`

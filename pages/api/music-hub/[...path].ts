@@ -1,7 +1,7 @@
 import http from "node:http";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const MUSIC_API_HUB_BASE = "http://154.36.187.103:8787";
+const MUSIC_API_HUB_BASE_ENV = "MUSIC_API_HUB_BASE_URL";
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
   "if-none-match",
@@ -32,6 +32,18 @@ function queryValues(value: string | string[] | undefined): string[] {
   return value === undefined ? [] : [value];
 }
 
+function getMusicApiHubBase(): URL | null {
+  const value = process.env[MUSIC_API_HUB_BASE_ENV]?.trim();
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function handler(
   request: NextApiRequest,
   response: NextApiResponse,
@@ -42,9 +54,17 @@ export default function handler(
     return;
   }
 
+  const hubBase = getMusicApiHubBase();
+  if (!hubBase) {
+    response.status(503).json({
+      detail: `Missing or invalid ${MUSIC_API_HUB_BASE_ENV} environment variable`,
+    });
+    return;
+  }
+
   const target = new URL(
     pathParts.map((part) => encodeURIComponent(part)).join("/"),
-    `${MUSIC_API_HUB_BASE}/`,
+    hubBase,
   );
   for (const [key, value] of Object.entries(request.query)) {
     if (key === "path") continue;

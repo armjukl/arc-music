@@ -12,5 +12,5 @@ export function getMusicApi(apiId: MusicApiId): MusicApi {
 }
 
 export { gdstudioApi } from './gdstudio';
-export { bilibiliApi, MUSIC_API_HUB_BASE } from './bilibili';
+export { bilibiliApi } from './bilibili';
 export * from './types';
