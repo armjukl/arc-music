@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import type { CombinedLyricLine, PlaybackMode, Track } from "./types";
-import { formatTime } from "./utils";
+import { formatDate, formatTime } from "./utils";
 
 type MobilePlayerProps = {
   currentSong?: Track;
@@ -259,9 +259,14 @@ export function MobilePlayer({
         </div>
         <div className="flex-1 flex flex-col p-4">
           <div className="flex-1 w-full flex flex-col">
-            {hasAnyLyric ? <div className={clsx("w-full", lyricsExpanded && "flex-1 flex flex-col")}>
+            {(hasAnyLyric || currentSong?.publishedAt) ? <div className={clsx("w-full", lyricsExpanded && "flex-1 flex flex-col")}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-slate-600">歌词</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-600">歌词</span>
+                  {currentSong?.publishedAt ? (
+                    <span className="text-[10px] text-slate-400">发布于 {formatDate(currentSong.publishedAt)}</span>
+                  ) : null}
+                </div>
                 <div className="flex items-center space-x-2">
                   {hasTranslationLyric && <button type="button" onClick={onToggleTranslation} className="text-xs px-2 py-1 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 transition-colors">{showTranslation ? "查看原文" : "查看翻译"}</button>}
                   <button type="button" onClick={onToggleLyricsExpanded} className="text-xs px-2 py-1 rounded-md border border-slate-300 text-slate-600 hover:bg-white/70 transition-colors">{lyricsExpanded ? "收起歌词" : "展开歌词"}</button>

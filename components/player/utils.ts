@@ -122,6 +122,14 @@ export function formatTime(seconds: number): string {
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
+export function formatDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString().slice(0, 10);
+}
+
 export function formatFileSizeLabel(sizeKb?: number | null): string {
   if (!sizeKb || sizeKb <= 0) return "未知";
   if (sizeKb >= 1024) {

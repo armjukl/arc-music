@@ -20,6 +20,7 @@ export type Track = Omit<LocalTrack, "apiId"> & {
   apiId: MusicApiId;
   url?: string;
   cover?: string | null;
+  publishedAt?: string;
   lyric?: string | null;
   tLyric?: string | null;
   fileSizeKb?: number | null;
@@ -41,6 +42,7 @@ export type PlaybackHistoryTrack = Pick<
   | "lyricId"
   | "bitrate"
   | "cover"
+  | "publishedAt"
 >;
 
 // Favorites use the same durable metadata whitelist as playback history.

@@ -2,7 +2,7 @@ import type React from "react";
 import clsx from "clsx";
 import { Heart, MoreVertical, Pause, Play, Repeat, Repeat1, Share, Shuffle, SkipBack, SkipForward, Volume2, X } from "lucide-react";
 import type { CombinedLyricLine, PlaybackMode, Track } from "./types";
-import { formatTime } from "./utils";
+import { formatDate, formatTime } from "./utils";
 
 type DesktopPlayerProps = {
   currentSong?: Track;
@@ -194,9 +194,14 @@ export function DesktopPlayer({
                 </div>
               </div>
             )}
-            {hasAnyLyric && <div className={clsx("w-full max-w-2xl min-h-0", lyricsExpanded ? "flex-1 flex flex-col mt-2 md:mt-4 mb-4 md:mb-6" : "mb-4 md:mb-6")}>
+            {(hasAnyLyric || currentSong?.publishedAt) && <div className={clsx("w-full max-w-2xl min-h-0", lyricsExpanded ? "flex-1 flex flex-col mt-2 md:mt-4 mb-4 md:mb-6" : "mb-4 md:mb-6")}>
               <div className={clsx("flex items-center justify-between", lyricsExpanded ? "mb-3" : "mb-2")}>
-                <span className="text-sm font-semibold text-slate-600">歌词</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-600">歌词</span>
+                  {currentSong?.publishedAt ? (
+                    <span className="text-xs text-slate-400">发布于 {formatDate(currentSong.publishedAt)}</span>
+                  ) : null}
+                </div>
                 <div className="flex items-center space-x-2">
                   {hasTranslationLyric && <button type="button" onClick={onToggleTranslation} className="text-xs px-2 py-1 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 transition-colors">{showTranslation ? "隐藏翻译" : "显示翻译"}</button>}
                   <button type="button" onClick={onToggleLyricsExpanded} className="text-xs px-2 py-1 rounded-md border border-slate-300 text-slate-600 hover:bg-white/70 transition-colors">{lyricsExpanded ? "收起歌词" : "展开歌词"}</button>

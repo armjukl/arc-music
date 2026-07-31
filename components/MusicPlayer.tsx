@@ -73,6 +73,7 @@ const toPlaybackHistoryTrack = (track: Track): PlaybackHistoryTrack => ({
   lyricId: track.lyricId,
   bitrate: track.bitrate,
   cover: track.cover,
+  publishedAt: track.publishedAt,
 });
 
 const toFavoriteTrack = (track: Track): FavoriteTrack => toPlaybackHistoryTrack(track);
@@ -447,6 +448,8 @@ const MusicPlayer = () => {
       let resolvedArtist = track.artist;
       let lyricText = track.lyric ?? null;
       let translationText = track.tLyric ?? null;
+      let cover = track.cover ?? null;
+      let publishedAt = track.publishedAt;
       const api = getMusicApi(track.apiId);
 
       if (!trackId) {
@@ -484,6 +487,12 @@ const MusicPlayer = () => {
         if (artistText) {
           resolvedArtist = artistText;
         }
+        if (best.cover_url) {
+          cover = best.cover_url;
+        }
+        if (best.published_at) {
+          publishedAt = best.published_at;
+        }
       }
 
       const urlData = await api.getUrl({
@@ -497,7 +506,6 @@ const MusicPlayer = () => {
       }
 
       const resolvedUrl = sanitizeUrl(urlData.url);
-      let cover = track.cover ?? null;
 
       if (picId) {
         try {
@@ -552,6 +560,7 @@ const MusicPlayer = () => {
         picId,
         lyricId,
         cover,
+        publishedAt,
         name: resolvedName,
         album: resolvedAlbum,
         artist: resolvedArtist,
@@ -1009,7 +1018,8 @@ const MusicPlayer = () => {
             lyricId,
             bitrate: selectedBitrate,
             url: undefined,
-            cover: picId ? undefined : null,
+            cover: item.cover_url ?? (picId ? undefined : null),
+            publishedAt: item.published_at,
             lyric: null,
             tLyric: null,
             fileSizeKb: null,

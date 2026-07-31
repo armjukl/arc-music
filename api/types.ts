@@ -10,6 +10,8 @@ export type ApiSearchItem = {
   duration?: string;
   pic_id?: string;
   lyric_id?: string;
+  cover_url?: string;
+  published_at?: string;
   source?: string;
 };
 

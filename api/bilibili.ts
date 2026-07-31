@@ -20,6 +20,7 @@ type HubTrack = {
   album?: string;
   duration_ms?: number | null;
   cover_url?: string | null;
+  published_at?: string | null;
   source_url?: string | null;
   stream_url?: string | null;
   download_url?: string | null;
@@ -82,6 +83,8 @@ function toSearchItem(track: HubTrack): ApiSearchItem {
     artist: track.artist ?? '',
     album: track.album ?? '',
     duration: duration ? `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}` : '',
+    cover_url: track.cover_url ?? undefined,
+    published_at: track.published_at ?? undefined,
     source: 'bilibili',
   };
 }
