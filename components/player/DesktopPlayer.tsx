@@ -85,6 +85,7 @@ export function DesktopPlayer({
         <img
           src={coverUrl}
           alt="cover"
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover"
         />
       ) : isPlaying ? (
@@ -110,6 +111,7 @@ export function DesktopPlayer({
         <img
           src={coverUrl}
           alt="cover"
+          referrerPolicy="no-referrer"
           className="w-full h-full object-contain bg-slate-900/10"
         />
       ) : (
