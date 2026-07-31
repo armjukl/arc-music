@@ -105,11 +105,11 @@ export const bilibiliApi: MusicApi = {
 
   getUrl: async (params: MusicApiUrlParams): Promise<ApiUrlResponse> => {
     const track = await request<HubResolvedAudio>(
-      buildUrl('/api/bilibili/resolve', { id: params.id }),
+      buildUrl('/api/bilibili/audio/resolve', { id: params.id }),
     );
     const url =
       resolveMediaUrl(track.download_url) ??
-      buildUrl('/api/bilibili/direct', { id: params.id });
+      buildUrl('/api/bilibili/audio/direct', { id: params.id });
     return {
       url,
       br: params.bitrate,
