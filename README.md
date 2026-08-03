@@ -1,6 +1,7 @@
 # 🎵 Arc-music
 
 > 现版本为使用GDstudio的api版，如需使用本地音乐版请访问https://github.com/armjukl/arc-music/tree/local
+> 可自行部署bilibili音源后端
 > 目前GDstudio限制同一ip每5分钟50次请求
 
 * 体验网站（部署在vercel）：https://music-player-rosy-nine.vercel.app/
