@@ -55,7 +55,7 @@ export function SearchBar({
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   return (
-    <div className="p-3 md:p-6 border-b border-slate-200/60 shrink-0">
+    <div className="p-4 md:px-8 md:py-5 border-b border-slate-200/60 dark:border-slate-700/60 shrink-0">
       <div
         className={clsx(
           "flex-wrap items-center gap-3 mb-3",
@@ -63,11 +63,11 @@ export function SearchBar({
         )}
       >
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-slate-600">API</span>
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">API</span>
           <select
             value={selectedApiId}
             onChange={(e) => onApiChange(e.target.value as MusicApiId)}
-            className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-200"
           >
             {musicApis.map((api) => (
               <option key={api.id} value={api.id}>
@@ -83,7 +83,7 @@ export function SearchBar({
             "px-3 py-1 rounded-lg border text-sm transition-colors",
             showingPlaybackHistory
               ? "border-sky-500 bg-sky-500 text-white"
-              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60",
+              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-700/60",
           )}
         >
           播放历史
@@ -95,14 +95,14 @@ export function SearchBar({
             "px-3 py-1 rounded-lg border text-sm transition-colors",
             showingFavorites
               ? "border-sky-500 bg-sky-500 text-white"
-              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60",
+              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-700/60",
           )}
         >
           收藏列表
         </button>
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-slate-600">音源</span>
-          <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white/70">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">音源</span>
+          <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white/70 dark:border-slate-600 dark:bg-slate-800/70">
             {availableSources.map(({ value, label }) => (
               <button
                 key={value}
@@ -112,7 +112,7 @@ export function SearchBar({
                   "px-3 py-1 text-sm transition-colors",
                   selectedSource === value
                     ? "bg-sky-500 text-white"
-                    : "text-slate-600 hover:bg-white/60",
+                    : "text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-slate-700/60",
                 )}
               >
                 {label}
@@ -121,13 +121,13 @@ export function SearchBar({
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-slate-600">音质</span>
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">音质</span>
           <select
             value={selectedBitrate}
             onChange={(e) =>
               onBitrateChange(Number(e.target.value) as BitrateOption)
             }
-            className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            className="px-3 py-1 rounded-lg border border-slate-300 bg-white/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-200"
           >
             {bitrateOptions.map((option) => (
               <option
@@ -150,7 +150,7 @@ export function SearchBar({
             }
           }}
           placeholder="搜索歌曲/歌手/专辑"
-          className="flex-1 px-3 py-1.5 md:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white/70 text-slate-800 placeholder-slate-500"
+          className="flex-1 px-3 py-1.5 md:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white/70 text-slate-800 placeholder-slate-500 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-200 dark:placeholder-slate-400"
         />
         <button
           type="button"
@@ -176,7 +176,7 @@ export function SearchBar({
             "md:hidden px-3 py-1 rounded-lg border inline-flex items-center justify-center transition-colors",
             filtersExpanded
               ? "border-sky-500 bg-sky-500 text-white"
-              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60",
+              : "border-slate-300 bg-white/70 text-slate-600 hover:bg-white/60 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-700/60",
           )}
         >
           <SlidersHorizontal size={16} />

@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Settings } from "lucide-react";
+import { Check, Monitor, Moon, Settings, Sun } from "lucide-react";
 import type { MusicApiId } from "../../api";
 import type { MusicSource } from "../../data/localTracks";
 import { SearchBar } from "./SearchBar";
@@ -38,6 +38,7 @@ type LibraryPanelProps = {
   selectedBitrate: BitrateOption;
   selectedSource: MusicSource;
   performanceMode: "normal" | "low";
+  themeMode: "light" | "dark" | "system";
   showingSearchResults: boolean;
   showingPlaybackHistory: boolean;
   showingFavorites: boolean;
@@ -57,6 +58,7 @@ type LibraryPanelProps = {
   onShowTrackInfo: (track: Track) => void;
   onSourceChange: (source: MusicSource) => void;
   onPerformanceModeChange: (mode: "normal" | "low") => void;
+  onThemeModeChange: (mode: "light" | "dark" | "system") => void;
   onToggleFavorite: (track: Track) => void;
   onReorderFavorites: (fromIndex: number, toIndex: number) => void;
   onTogglePlaybackHistory: () => void;
@@ -85,6 +87,7 @@ export function LibraryPanel({
   selectedBitrate,
   selectedSource,
   performanceMode,
+  themeMode,
   showingSearchResults,
   showingPlaybackHistory,
   showingFavorites,
@@ -104,6 +107,7 @@ export function LibraryPanel({
   onShowTrackInfo,
   onSourceChange,
   onPerformanceModeChange,
+  onThemeModeChange,
   onToggleFavorite,
   onReorderFavorites,
   onTogglePlaybackHistory,
@@ -112,10 +116,10 @@ export function LibraryPanel({
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-4 md:w-2/3 md:border-r md:border-slate-200/70 md:bg-white/40">
-      <div className="relative px-4 py-2 md:px-6 md:py-3 border-b border-slate-200/70 shrink-0">
+    <div className="flex-1 flex flex-col overflow-hidden md:w-2/3 md:border-r md:border-slate-200/70 md:bg-white/40 md:dark:bg-slate-900/50 md:dark:border-slate-700/70">
+      <div className="relative px-4 py-3 md:px-8 md:py-4 border-b border-slate-200/70 dark:border-slate-700/70 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
             Arc-music
           </h1>
           <button
@@ -124,7 +128,7 @@ export function LibraryPanel({
             aria-label="设置"
             aria-expanded={settingsOpen}
             onClick={() => setSettingsOpen((open) => !open)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100/80 hover:text-slate-800"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <Settings size={20} />
           </button>
@@ -133,41 +137,87 @@ export function LibraryPanel({
           <div
             role="dialog"
             aria-label="设置"
-            className="absolute right-4 top-full z-30 mt-2 w-72 rounded-lg border border-slate-200 bg-white p-4 shadow-lg md:right-6"
+            className="absolute right-4 top-full z-30 mt-2 w-72 rounded-lg border border-slate-200 bg-white p-4 shadow-lg md:right-6 dark:border-slate-700 dark:bg-slate-900"
           >
-            <p className="text-sm font-semibold text-slate-800">性能模式</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              主题模式
+            </p>
             <div
               role="radiogroup"
-              aria-label="性能模式"
-              className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200"
+              aria-label="主题模式"
+              className="mt-3 grid grid-cols-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
             >
               {([
-                ["normal", "正常"],
-                ["low", "低性能"],
+                ["light", "日间"],
+                ["dark", "夜间"],
+                ["system", "跟随系统"],
               ] as const).map(([mode, label]) => {
-                const selected = performanceMode === mode;
+                const selected = themeMode === mode;
                 return (
                   <button
                     key={mode}
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    onClick={() => onPerformanceModeChange(mode)}
+                    onClick={() => onThemeModeChange(mode)}
                     className={`flex h-9 items-center justify-center gap-1 text-sm transition-colors ${
                       selected
                         ? "bg-sky-500 text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
+                        : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                     }`}
                   >
-                    {selected && <Check size={14} />}
+                    {mode === "light" ? (
+                      <Sun size={14} />
+                    ) : mode === "dark" ? (
+                      <Moon size={14} />
+                    ) : (
+                      <Monitor size={14} />
+                    )}
                     {label}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              低性能模式会关闭非必要动画和歌词平滑滚动。
+            <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              跟随系统会随着设备外观自动切换日间/夜间模式。
             </p>
+            <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                性能模式
+              </p>
+              <div
+                role="radiogroup"
+                aria-label="性能模式"
+                className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
+              >
+                {([
+                  ["normal", "正常"],
+                  ["low", "低性能"],
+                ] as const).map(([mode, label]) => {
+                  const selected = performanceMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => onPerformanceModeChange(mode)}
+                      className={`flex h-9 items-center justify-center gap-1 text-sm transition-colors ${
+                        selected
+                          ? "bg-sky-500 text-white"
+                          : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {selected && <Check size={14} />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                低性能模式会关闭非必要动画和歌词平滑滚动。
+              </p>
+            </div>
           </div>
         )}
       </div>

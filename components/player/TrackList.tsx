@@ -156,40 +156,40 @@ export function TrackList({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+    <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0 px-4 md:px-6">
       {showingPlaybackHistory ? (
-        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600 dark:text-slate-300">
           <span>播放历史</span>
           <div className="flex items-center space-x-2">
             <button
               type="button"
               onClick={onTogglePlaybackHistory}
-              className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white"
+              className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               返回曲库
             </button>
             <button
               type="button"
               onClick={onClearPlaybackHistory}
-              className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white"
+              className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               清空历史
             </button>
           </div>
         </div>
       ) : showingFavorites ? (
-        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600 dark:text-slate-300">
           <span>收藏列表</span>
           <button
             type="button"
             onClick={onToggleFavorites}
-            className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white"
+            className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             返回曲库
           </button>
         </div>
       ) : showingSearchResults && (
-        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600 dark:text-slate-300">
           <div className="flex items-center space-x-2">
             <span>页码</span>
             <button
@@ -197,8 +197,8 @@ export function TrackList({
               className={clsx(
                 "px-3 py-1 rounded-md border text-xs transition-colors",
                 isSearching || !lastSearchKeyword || searchPage <= 1
-                  ? "text-slate-400 border-slate-200 cursor-not-allowed"
-                  : "text-slate-600 border-slate-300 hover:bg-white",
+                  ? "text-slate-400 border-slate-200 cursor-not-allowed dark:text-slate-500 dark:border-slate-700"
+                  : "text-slate-600 border-slate-300 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800",
               )}
               disabled={isSearching || !lastSearchKeyword || searchPage <= 1}
             >
@@ -216,7 +216,7 @@ export function TrackList({
                     onSearchPageSubmit();
                   }
                 }}
-                className="w-16 px-2 py-1 rounded-md border border-slate-300 bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-400 text-sm"
+                className="w-16 px-2 py-1 rounded-md border border-slate-300 bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-400 text-sm dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200"
                 disabled={!lastSearchKeyword}
               />
               <button
@@ -224,8 +224,8 @@ export function TrackList({
                 className={clsx(
                   "px-3 py-1 rounded-md border text-xs transition-colors",
                   isSearching || !lastSearchKeyword
-                    ? "text-slate-400 border-slate-200 cursor-not-allowed"
-                    : "text-slate-600 border-slate-300 hover:bg-white",
+                    ? "text-slate-400 border-slate-200 cursor-not-allowed dark:text-slate-500 dark:border-slate-700"
+                    : "text-slate-600 border-slate-300 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800",
                 )}
                 disabled={isSearching || !lastSearchKeyword}
               >
@@ -237,22 +237,22 @@ export function TrackList({
               className={clsx(
                 "px-3 py-1 rounded-md border text-xs transition-colors",
                 isSearching || !lastSearchKeyword || !searchHasMore
-                  ? "text-slate-400 border-slate-200 cursor-not-allowed"
-                  : "text-slate-600 border-slate-300 hover:bg-white",
+                  ? "text-slate-400 border-slate-200 cursor-not-allowed dark:text-slate-500 dark:border-slate-700"
+                  : "text-slate-600 border-slate-300 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800",
               )}
               disabled={isSearching || !lastSearchKeyword || !searchHasMore}
             >
               下一页
             </button>
-            <span className="text-xs text-slate-500">第 {searchPage} 页</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">第 {searchPage} 页</span>
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-400 dark:text-slate-500">
             每页 {searchResultCount} 条
           </span>
         </div>
       )}
       {displayedTracks.length === 0 && (
-        <div className="text-slate-600 text-sm">
+        <div className="text-slate-600 dark:text-slate-300 text-sm">
           {showingFavorites
             ? "暂无收藏"
             : showingPlaybackHistory
@@ -273,10 +273,12 @@ export function TrackList({
             data-favorite-index={showingFavorites ? index : undefined}
             className={clsx(
               "group flex items-center p-4 rounded-2xl mb-3 cursor-pointer transition-all duration-300 ease-out transform hover:scale-[1.01]",
-              isCurrentSong ? "bg-white/60 shadow-md" : "hover:bg-white/50",
+              isCurrentSong
+                ? "bg-white/60 shadow-md dark:bg-slate-800/70"
+                : "hover:bg-white/50 dark:hover:bg-slate-800/60",
               showingFavorites &&
                 index === draggedFavoriteIndex &&
-                "scale-[1.02] bg-sky-50/80 shadow-lg ring-1 ring-sky-300/60",
+                "scale-[1.02] bg-sky-50/80 shadow-lg ring-1 ring-sky-300/60 dark:bg-sky-900/40 dark:ring-sky-500/40",
             )}
             onClick={() =>
               showingFavorites
@@ -293,7 +295,7 @@ export function TrackList({
                 onPointerDown={(event) => handleFavoriteDragStart(event, index)}
                 onClick={(event) => event.stopPropagation()}
                 onContextMenu={(event) => event.preventDefault()}
-                className="mr-2 touch-none cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+                className="mr-2 touch-none cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing dark:text-slate-500 dark:hover:text-slate-300"
               >
                 <GripVertical size={18} />
               </button>
@@ -307,17 +309,11 @@ export function TrackList({
               <div className="w-full h-full bg-gradient-to-br from-sky-400 to-blue-500 rounded-lg flex items-center justify-center overflow-hidden">
                 {loadingTrackIndex === index ? (
                   <div className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
-                ) : isCurrentSong && isPlaying ? (
-                  <div className="flex space-x-1">
-                    <div className="w-1 h-3 bg-white animate-pulse" />
-                    <div
-                      className="w-1 h-3 bg-white animate-pulse"
-                      style={{ animationDelay: "0.2s" }}
-                    />
-                    <div
-                      className="w-1 h-3 bg-white animate-pulse"
-                      style={{ animationDelay: "0.4s" }}
-                    />
+                ) : isCurrentSong ? (
+                  <div className="flex items-end space-x-1 h-5">
+                    <div className="w-1 h-3 bg-white origin-bottom animate-eq rounded-full" />
+                    <div className="w-1 h-5 bg-white origin-bottom animate-eq-2 rounded-full" />
+                    <div className="w-1 h-3 bg-white origin-bottom animate-eq-3 rounded-full" />
                   </div>
                 ) : (
                   <span className="text-xs font-bold text-white">
@@ -330,13 +326,13 @@ export function TrackList({
               <p
                 className={clsx(
                   "font-semibold text-sm leading-5 line-clamp-2 break-words md:text-base md:leading-normal md:line-clamp-1 md:truncate",
-                  isCurrentSong ? "text-slate-900" : "text-slate-700",
+                  isCurrentSong ? "text-slate-900 dark:text-slate-100" : "text-slate-700 dark:text-slate-300",
                 )}
               >
                 {song.name}
               </p>
               {!isBilibiliSearchResult && (
-                <p className="text-sm text-slate-500 truncate">
+                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
                   {song.artist ?? ""}
                 </p>
               )}
@@ -350,7 +346,7 @@ export function TrackList({
                     event.stopPropagation();
                     onDeletePlaybackHistoryTrack(song);
                   }}
-                  className="text-slate-400 hover:text-red-500 transition-colors"
+                  className="text-slate-400 hover:text-red-500 transition-colors dark:text-slate-500"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -360,7 +356,7 @@ export function TrackList({
                   e.stopPropagation();
                   onShowTrackInfo(song);
                 }}
-                className="opacity-0 group-hover:opacity-100 hover:text-slate-600 transition-all duration-300"
+                className="opacity-0 group-hover:opacity-100 hover:text-slate-600 transition-all duration-300 dark:hover:text-slate-300"
               >
                 <MoreVertical size={16} />
               </button>
@@ -384,7 +380,7 @@ export function TrackList({
                 />
               </button>
               {!isBilibiliSearchResult && (
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-slate-500 dark:text-slate-400">
                   {song.duration ?? ""}
                 </span>
               )}

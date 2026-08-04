@@ -55,23 +55,23 @@ export function TrackInfoModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors dark:text-slate-500 dark:hover:text-slate-300"
         >
           关闭
         </button>
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">歌曲信息</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">歌曲信息</h3>
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <div className="w-6 h-6 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin dark:border-slate-600 dark:border-t-sky-500" />
           </div>
         ) : error ? (
-          <div className="space-y-4 text-sm text-slate-600">
+          <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
             <p>{error}</p>
             <div className="flex items-center space-x-3">
               <button
@@ -84,14 +84,14 @@ export function TrackInfoModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-1.5 rounded-md border border-slate-300 text-xs text-slate-600 hover:bg-white"
+                className="px-3 py-1.5 rounded-md border border-slate-300 text-xs text-slate-600 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 关闭
               </button>
             </div>
           </div>
         ) : track ? (
-          <div className="space-y-3 text-sm text-slate-700">
+          <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
             <p>歌名：{track.name}</p>
             <p>歌手：{track.artist || "未知"}</p>
             <p>专辑：{track.album || "未知"}</p>
@@ -110,7 +110,7 @@ export function TrackInfoModal({
                 歌词链接：
                 {lyricLink ? (
                   <a
-                    className="text-sky-600 hover:underline"
+                    className="text-sky-600 hover:underline dark:text-sky-400"
                     href={lyricLink}
                     target="_blank"
                     rel="noreferrer"
@@ -125,7 +125,7 @@ export function TrackInfoModal({
                 封面链接：
                 {coverLink ? (
                   <a
-                    className="text-sky-600 hover:underline"
+                    className="text-sky-600 hover:underline dark:text-sky-400"
                     href={coverLink}
                     target="_blank"
                     rel="noreferrer"
@@ -140,7 +140,7 @@ export function TrackInfoModal({
                 歌曲链接：
                 {track.url ? (
                   <a
-                    className="text-sky-600 hover:underline break-all"
+                    className="text-sky-600 hover:underline break-all dark:text-sky-400"
                     href={track.url}
                     target="_blank"
                     rel="noreferrer"
@@ -154,7 +154,7 @@ export function TrackInfoModal({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-600">暂无歌曲信息</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">暂无歌曲信息</p>
         )}
       </div>
     </div>

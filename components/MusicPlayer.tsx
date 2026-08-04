@@ -48,9 +48,11 @@ const DEFAULT_SOURCE: MusicSource = "netease";
 const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
 const FAVORITES_STORAGE_KEY = "arc-music-favorites";
 const PERFORMANCE_MODE_STORAGE_KEY = "arc-music-performance-mode";
+const THEME_MODE_STORAGE_KEY = "arc-music-theme-mode";
 const MAX_PLAYBACK_HISTORY = 50;
 const MAX_FAVORITES = 50;
 type PerformanceMode = "normal" | "low";
+type ThemeMode = "light" | "dark" | "system";
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map((track) =>
   createTrack(track, DEFAULT_MUSIC_API_ID),
 );
@@ -133,6 +135,8 @@ const MusicPlayer = () => {
   const [pendingHistoryIndex, setPendingHistoryIndex] = useState<number | null>(null);
   const [performanceMode, setPerformanceMode] =
     useState<PerformanceMode>("normal");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
+  const [systemPrefersDark, setSystemPrefersDark] = useState(false);
 
   const soundRef = useRef<Howl | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -210,6 +214,32 @@ const MusicPlayer = () => {
     } catch {
       // Keep the default mode when storage is unavailable.
     }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
+      if (stored === "light" || stored === "dark" || stored === "system") {
+        setThemeMode(stored);
+      }
+    } catch {
+      // Keep the default theme when storage is unavailable.
+    }
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemPrefersDark(media.matches);
+    update();
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+    if (typeof media.addListener === "function") {
+      media.addListener(update);
+      return () => media.removeListener(update);
+    }
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -397,6 +427,15 @@ const MusicPlayer = () => {
     setPerformanceMode(mode);
     try {
       window.localStorage.setItem(PERFORMANCE_MODE_STORAGE_KEY, mode);
+    } catch {
+      // Keep the in-memory preference when storage is unavailable.
+    }
+  }, []);
+
+  const handleThemeModeChange = useCallback((mode: ThemeMode) => {
+    setThemeMode(mode);
+    try {
+      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
     } catch {
       // Keep the in-memory preference when storage is unavailable.
     }
@@ -1509,18 +1548,21 @@ const MusicPlayer = () => {
     );
   };
 
+  const isDarkMode =
+    themeMode === "dark" || (themeMode === "system" && systemPrefersDark);
+
   return (
     <div
-      className={`relative min-h-screen text-slate-800${
+      className={`relative min-h-screen text-slate-800 dark:text-slate-200${
         performanceMode === "low" ? " low-performance" : ""
-      }`}
+      }${isDarkMode ? " dark" : ""}`}
     >
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div
           className="h-full w-full bg-center bg-cover scale-105 transform"
           style={{ backgroundImage: "url('bg/5.jpg')" }}
         />
-        <div className="absolute inset-0 bg-white/50" />
+        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/70" />
       </div>
 
       <div className="h-screen flex flex-col md:flex-row">
@@ -1575,6 +1617,8 @@ const MusicPlayer = () => {
           }}
           onSourceChange={handleSourceChange}
           onPerformanceModeChange={handlePerformanceModeChange}
+          onThemeModeChange={handleThemeModeChange}
+          themeMode={themeMode}
           onToggleFavorite={handleToggleFavorite}
           onReorderFavorites={handleReorderFavorites}
           onTogglePlaybackHistory={() => {
