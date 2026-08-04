@@ -39,6 +39,7 @@ type LibraryPanelProps = {
   selectedSource: MusicSource;
   performanceMode: "normal" | "low";
   themeMode: "light" | "dark" | "system";
+  coverBackground: boolean;
   showingSearchResults: boolean;
   showingPlaybackHistory: boolean;
   showingFavorites: boolean;
@@ -59,6 +60,7 @@ type LibraryPanelProps = {
   onSourceChange: (source: MusicSource) => void;
   onPerformanceModeChange: (mode: "normal" | "low") => void;
   onThemeModeChange: (mode: "light" | "dark" | "system") => void;
+  onCoverBackgroundChange: (enabled: boolean) => void;
   onToggleFavorite: (track: Track) => void;
   onReorderFavorites: (fromIndex: number, toIndex: number) => void;
   onTogglePlaybackHistory: () => void;
@@ -88,6 +90,7 @@ export function LibraryPanel({
   selectedSource,
   performanceMode,
   themeMode,
+  coverBackground,
   showingSearchResults,
   showingPlaybackHistory,
   showingFavorites,
@@ -108,6 +111,7 @@ export function LibraryPanel({
   onSourceChange,
   onPerformanceModeChange,
   onThemeModeChange,
+  onCoverBackgroundChange,
   onToggleFavorite,
   onReorderFavorites,
   onTogglePlaybackHistory,
@@ -181,6 +185,43 @@ export function LibraryPanel({
             <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
               跟随系统会随着设备外观自动切换日间/夜间模式。
             </p>
+            <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                封面毛玻璃背景
+              </p>
+              <div
+                role="radiogroup"
+                aria-label="封面毛玻璃背景"
+                className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
+              >
+                {([
+                  [false, "关闭"],
+                  [true, "开启"],
+                ] as const).map(([enabled, label]) => {
+                  const selected = coverBackground === enabled;
+                  return (
+                    <button
+                      key={String(enabled)}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => onCoverBackgroundChange(enabled)}
+                      className={`flex h-9 items-center justify-center gap-1 text-sm transition-colors ${
+                        selected
+                          ? "bg-sky-500 text-white"
+                          : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {enabled && <Check size={14} />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                开启后，播放歌曲时会将封面作为背景并模糊处理，形成毛玻璃效果。
+              </p>
+            </div>
             <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                 性能模式

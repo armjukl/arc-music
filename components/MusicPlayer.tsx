@@ -49,6 +49,7 @@ const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
 const FAVORITES_STORAGE_KEY = "arc-music-favorites";
 const PERFORMANCE_MODE_STORAGE_KEY = "arc-music-performance-mode";
 const THEME_MODE_STORAGE_KEY = "arc-music-theme-mode";
+const COVER_BACKGROUND_STORAGE_KEY = "arc-music-cover-background";
 const MAX_PLAYBACK_HISTORY = 50;
 const MAX_FAVORITES = 50;
 type PerformanceMode = "normal" | "low";
@@ -137,6 +138,7 @@ const MusicPlayer = () => {
     useState<PerformanceMode>("normal");
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [systemPrefersDark, setSystemPrefersDark] = useState(false);
+  const [coverBackground, setCoverBackground] = useState(false);
 
   const soundRef = useRef<Howl | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -240,6 +242,17 @@ const MusicPlayer = () => {
       return () => media.removeListener(update);
     }
     return undefined;
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(COVER_BACKGROUND_STORAGE_KEY);
+      if (stored === "on") {
+        setCoverBackground(true);
+      }
+    } catch {
+      // Keep the default state when storage is unavailable.
+    }
   }, []);
 
   useEffect(() => {
@@ -436,6 +449,18 @@ const MusicPlayer = () => {
     setThemeMode(mode);
     try {
       window.localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
+    } catch {
+      // Keep the in-memory preference when storage is unavailable.
+    }
+  }, []);
+
+  const handleCoverBackgroundChange = useCallback((enabled: boolean) => {
+    setCoverBackground(enabled);
+    try {
+      window.localStorage.setItem(
+        COVER_BACKGROUND_STORAGE_KEY,
+        enabled ? "on" : "off",
+      );
     } catch {
       // Keep the in-memory preference when storage is unavailable.
     }
@@ -1558,10 +1583,17 @@ const MusicPlayer = () => {
       }${isDarkMode ? " dark" : ""}`}
     >
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div
-          className="h-full w-full bg-center bg-cover scale-105 transform"
-          style={{ backgroundImage: "url('bg/5.jpg')" }}
-        />
+        {coverBackground && coverUrl ? (
+          <div
+            className="h-full w-full bg-center bg-cover scale-110 transform blur-2xl"
+            style={{ backgroundImage: `url("${coverUrl}")` }}
+          />
+        ) : (
+          <div
+            className="h-full w-full bg-center bg-cover scale-105 transform"
+            style={{ backgroundImage: "url('bg/5.jpg')" }}
+          />
+        )}
         <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/70" />
       </div>
 
@@ -1618,6 +1650,8 @@ const MusicPlayer = () => {
           onSourceChange={handleSourceChange}
           onPerformanceModeChange={handlePerformanceModeChange}
           onThemeModeChange={handleThemeModeChange}
+          onCoverBackgroundChange={handleCoverBackgroundChange}
+          coverBackground={coverBackground}
           themeMode={themeMode}
           onToggleFavorite={handleToggleFavorite}
           onReorderFavorites={handleReorderFavorites}
