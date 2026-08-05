@@ -29,6 +29,20 @@
   scroll-behavior: auto !important;
 }
 
+/* 封面背景淡入淡出 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.8s ease-in-out;
+}
+
 body {
   margin: 0;
   padding: 0;

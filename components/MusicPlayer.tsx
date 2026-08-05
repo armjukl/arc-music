@@ -1583,18 +1583,33 @@ const MusicPlayer = () => {
       }${isDarkMode ? " dark" : ""}`}
     >
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        {coverBackground && coverUrl ? (
-          <div
-            className="h-full w-full bg-center bg-cover scale-110 transform blur-2xl"
-            style={{ backgroundImage: `url("${coverUrl}")` }}
-          />
-        ) : (
-          <div
-            className="h-full w-full bg-center bg-cover scale-105 transform"
-            style={{ backgroundImage: "url('bg/5.jpg')" }}
-          />
-        )}
-        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/70" />
+        <div
+          className="h-full w-full bg-center bg-cover scale-105 transform transition-opacity duration-700"
+          style={{
+            backgroundImage: "url('bg/5.jpg')",
+            opacity: coverBackground && coverUrl ? 0 : 1,
+          }}
+        />
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{ opacity: coverBackground && coverUrl ? 1 : 0 }}
+        >
+          {coverBackground && coverUrl ? (
+            <div
+              key={coverUrl}
+              className="fade-in h-full w-full bg-center bg-cover scale-110 transform blur-3xl"
+              style={{ backgroundImage: `url("${coverUrl}")` }}
+            />
+          ) : null}
+        </div>
+        <div
+          className="absolute inset-0 bg-white/50 dark:bg-slate-900/70 transition-opacity duration-700"
+          style={{ opacity: coverBackground && coverUrl ? 0 : 1 }}
+        />
+        <div
+          className="absolute inset-0 bg-black/30 transition-opacity duration-700"
+          style={{ opacity: coverBackground && coverUrl ? 1 : 0 }}
+        />
       </div>
 
       <div className="h-screen flex flex-col md:flex-row">
@@ -1706,6 +1721,7 @@ const MusicPlayer = () => {
           onNext={playNext}
           onCyclePlaybackMode={cyclePlaybackMode}
           onVolumeChange={setVolume}
+          coverBackground={coverBackground}
         />
         <MobilePlayer
           currentSong={currentSong}
@@ -1751,6 +1767,7 @@ const MusicPlayer = () => {
           onNext={playNext}
           onCyclePlaybackMode={cyclePlaybackMode}
           onVolumeChange={setVolume}
+          coverBackground={coverBackground}
         />
         {infoModalVisible && (
           <TrackInfoModal

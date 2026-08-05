@@ -40,6 +40,7 @@ type DesktopPlayerProps = {
   onNext: () => void;
   onCyclePlaybackMode: () => void;
   onVolumeChange: (volume: number) => void;
+  coverBackground: boolean;
 };
 
 export function DesktopPlayer({
@@ -78,6 +79,7 @@ export function DesktopPlayer({
   onNext,
   onCyclePlaybackMode,
   onVolumeChange,
+  coverBackground,
 }: DesktopPlayerProps) {
   const coverNodeSmall = (
     <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center mr-3 shrink-0">
@@ -123,7 +125,7 @@ export function DesktopPlayer({
   );
 
   return (
-    <div className="hidden md:flex md:w-1/3 md:h-full md:flex-col bg-white/60 dark:bg-slate-900/60">
+    <div className={clsx("hidden md:flex md:w-1/3 md:h-full md:flex-col", coverBackground ? "bg-transparent" : "bg-white/60 dark:bg-slate-900/60")}>
       <div className="flex items-center justify-between p-4 border-b border-slate-200/70 dark:border-slate-700/70">
         <div className="flex items-center min-w-0">
           {coverNodeSmall}
@@ -207,12 +209,12 @@ export function DesktopPlayer({
                   <button type="button" onClick={onToggleLyricsExpanded} className="text-xs px-2.5 py-1 rounded-md border border-slate-300 text-slate-600 hover:bg-white/70 transition-colors dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800/70">{lyricsExpanded ? "收起歌词" : "展开歌词"}</button>
                 </div>
               </div>
-              {lyricsExpanded ? <div ref={lyricContainerRef} className="flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-22rem)] md:max-h-[calc(100vh-20rem)] custom-scrollbar bg-white/70 border border-slate-200 rounded-xl p-4 dark:bg-slate-800/70 dark:border-slate-700">
+              {lyricsExpanded ? <div ref={lyricContainerRef} className={clsx("flex-1 min-h-[8rem] overflow-y-auto max-h-[calc(100vh-22rem)] md:max-h-[calc(100vh-20rem)] custom-scrollbar border border-slate-200 rounded-xl p-4 dark:border-slate-700", coverBackground ? "bg-transparent" : "bg-white/70 dark:bg-slate-800/70")}>
                 {displayLyricLines.length > 0 ? displayLyricLines.map((line, index) => {
                   const isActive = index === activeLyricIndex;
                   return <div key={`lyric-desktop-combined-${index}`} data-lyric-key={`${currentSong?.id ?? "unknown"}-combined-${Number.isFinite(line.time) ? line.time.toFixed(3) : `idx-${index}`}`} className="py-1 transition-colors flex items-start gap-3"><div className="flex-1 min-w-0"><p className={clsx("leading-relaxed transition-all duration-200 ease-out", isActive ? "text-sky-600 font-bold text-lg opacity-100" : "text-slate-700 text-base opacity-70 dark:text-slate-300")}>{line.original}</p>{line.translation ? <p className={clsx("leading-relaxed transition-all duration-200 ease-out", isActive ? "text-sky-500 font-semibold text-base mt-0.5 opacity-100" : "text-slate-500 text-sm mt-0.5 opacity-70 dark:text-slate-400")}>{line.translation}</p> : null}</div>{Number.isFinite(line.time) ? <span className="text-xs text-slate-400 flex-shrink-0 pt-1 select-none dark:text-slate-500">{formatTime(line.time)}</span> : null}</div>;
                 }) : <p className="text-sm text-slate-500 dark:text-slate-400">暂无歌词</p>}
-              </div> : <div className="bg-white/70 border border-slate-200 rounded-xl p-4 dark:bg-slate-800/70 dark:border-slate-700">{previewLyricLines.length > 0 ? previewLyricLines.map(({ index, line }) => { const isActive = index === activeLyricIndex; return <div key={`lyric-preview-combined-${index}`} className="py-0.5"><p className={clsx("leading-relaxed text-center transition-all", isActive ? "text-sky-600 font-semibold text-lg" : "text-slate-600 text-sm dark:text-slate-300")}>{line.original}</p>{line.translation ? <p className={clsx("leading-relaxed text-center transition-all", isActive ? "text-sky-500 font-medium text-base mt-0.5" : "text-slate-500 text-xs mt-0.5 dark:text-slate-400")}>{line.translation}</p> : null}</div>; }) : <p className="text-sm text-slate-500 dark:text-slate-400">暂无歌词</p>}</div>}
+              </div> : <div className={clsx("border border-slate-200 rounded-xl p-4 dark:border-slate-700", coverBackground ? "bg-transparent" : "bg-white/70 dark:bg-slate-800/70")}>{previewLyricLines.length > 0 ? previewLyricLines.map(({ index, line }) => { const isActive = index === activeLyricIndex; return <div key={`lyric-preview-combined-${index}`} className="py-0.5"><p className={clsx("leading-relaxed text-center transition-all", isActive ? "text-sky-600 font-semibold text-lg" : "text-slate-600 text-sm dark:text-slate-300")}>{line.original}</p>{line.translation ? <p className={clsx("leading-relaxed text-center transition-all", isActive ? "text-sky-500 font-medium text-base mt-0.5" : "text-slate-500 text-xs mt-0.5 dark:text-slate-400")}>{line.translation}</p> : null}</div>; }) : <p className="text-sm text-slate-500 dark:text-slate-400">暂无歌词</p>}</div>}
             </div>}
           </div>
           <div className={clsx("w-full max-w-2xl", lyricsExpanded ? "mb-5 mt-2" : "mb-6")}>

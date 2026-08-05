@@ -20,6 +20,7 @@ type TrackListProps = {
   showingSearchResults: boolean;
   showingPlaybackHistory: boolean;
   showingFavorites: boolean;
+  coverBackground: boolean;
   onClearPlaybackHistory: () => void;
   onDeletePlaybackHistoryTrack: (track: PlaybackHistoryTrack) => void;
   onPlayHistoryTrack: (track: PlaybackHistoryTrack, index: number) => void;
@@ -53,6 +54,7 @@ export function TrackList({
   showingSearchResults,
   showingPlaybackHistory,
   showingFavorites,
+  coverBackground,
   onClearPlaybackHistory,
   onDeletePlaybackHistoryTrack,
   onPlayHistoryTrack,
@@ -156,7 +158,7 @@ export function TrackList({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0 px-4 md:px-6">
+    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pt-4 md:pt-5 pb-24 md:pb-0 px-4 md:px-6">
       {showingPlaybackHistory ? (
         <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600 dark:text-slate-300">
           <span>播放历史</span>
@@ -274,8 +276,12 @@ export function TrackList({
             className={clsx(
               "group flex items-center p-4 rounded-2xl mb-3 cursor-pointer transition-all duration-300 ease-out transform hover:scale-[1.01]",
               isCurrentSong
-                ? "bg-white/60 shadow-md dark:bg-slate-800/70"
-                : "hover:bg-white/50 dark:hover:bg-slate-800/60",
+                ? coverBackground
+                  ? "bg-white/10 shadow-md"
+                  : "bg-white/60 shadow-md dark:bg-slate-800/70"
+                : coverBackground
+                  ? "hover:bg-white/10"
+                  : "hover:bg-white/50 dark:hover:bg-slate-800/60",
               showingFavorites &&
                 index === draggedFavoriteIndex &&
                 "scale-[1.02] bg-sky-50/80 shadow-lg ring-1 ring-sky-300/60 dark:bg-sky-900/40 dark:ring-sky-500/40",
