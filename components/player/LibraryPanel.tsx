@@ -1,4 +1,5 @@
 import React from "react";
+import clsx from "clsx";
 import { Check, Monitor, Moon, Settings, Sun } from "lucide-react";
 import type { MusicApiId } from "../../api";
 import type { MusicSource } from "../../data/localTracks";
@@ -118,15 +119,38 @@ export function LibraryPanel({
   onToggleFavorites,
 }: LibraryPanelProps) {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [dropdownPosition, setDropdownPosition] = React.useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+  const settingsButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
+  React.useEffect(() => {
+    if (!settingsOpen) {
+      setDropdownPosition(null);
+      return;
+    }
+    const button = settingsButtonRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const dropdownWidth = 288;
+    const left = Math.max(
+      8,
+      Math.min(rect.right - dropdownWidth, window.innerWidth - dropdownWidth - 8),
+    );
+    const top = rect.bottom + 8;
+    setDropdownPosition({ left, top });
+  }, [settingsOpen]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden md:w-2/3 md:border-r md:border-slate-200/70 md:bg-white/40 md:dark:bg-slate-900/50 md:dark:border-slate-700/70">
-      <div className="relative px-4 py-3 md:px-8 md:py-4 border-b border-slate-200/70 dark:border-slate-700/70 shrink-0">
+    <div className={clsx("flex-1 flex flex-col overflow-hidden md:w-2/3 md:border-r", coverBackground ? "md:bg-transparent md:border-transparent" : "md:border-slate-200/70 md:bg-white/40 md:dark:bg-slate-900/50 md:dark:border-slate-700/70")}>
+      <div className="relative z-[100] px-4 py-3 md:px-8 md:py-4 border-b border-slate-200/70 dark:border-slate-700/70 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
             Arc-music
           </h1>
           <button
+            ref={settingsButtonRef}
             type="button"
             title="设置"
             aria-label="设置"
@@ -137,11 +161,12 @@ export function LibraryPanel({
             <Settings size={20} />
           </button>
         </div>
-        {settingsOpen && (
+        {settingsOpen && dropdownPosition && (
           <div
             role="dialog"
             aria-label="设置"
-            className="absolute right-4 top-full z-30 mt-2 w-72 rounded-lg border border-slate-200 bg-white p-4 shadow-lg md:right-6 dark:border-slate-700 dark:bg-slate-900"
+            className="fixed z-[100] mt-2 w-72 max-h-[80vh] overflow-y-auto custom-scrollbar rounded-lg border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            style={{ left: dropdownPosition.left, top: dropdownPosition.top }}
           >
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
               主题模式
@@ -275,6 +300,7 @@ export function LibraryPanel({
         selectedSource={selectedSource}
         showingPlaybackHistory={showingPlaybackHistory}
         showingFavorites={showingFavorites}
+        coverBackground={coverBackground}
         onApiChange={onApiChange}
         onBitrateChange={onBitrateChange}
         onSearch={onSearch}
@@ -294,6 +320,7 @@ export function LibraryPanel({
         musicList={musicList}
         playbackHistory={playbackHistory}
         favorites={favorites}
+        coverBackground={coverBackground}
         searchHasMore={searchHasMore}
         searchPage={searchPage}
         searchPageInput={searchPageInput}

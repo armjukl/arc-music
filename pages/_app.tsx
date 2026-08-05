@@ -2,10 +2,13 @@
 import '../styles/globals.css';
 import Head from 'next/head';
 import { AppProps } from 'next/app';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <>
+    <div className={inter.className}>
       <Head>
         <title>Arc-music</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,7 +16,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <meta name="theme-color" content="#6366f1" />
       </Head>
       <Component {...pageProps} />
-    </>
+    </div>
   );
 }
 
