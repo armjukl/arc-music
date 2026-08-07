@@ -22,6 +22,7 @@ type SearchBarProps = {
   selectedSource: MusicSource;
   showingPlaybackHistory: boolean;
   showingFavorites: boolean;
+  showingPlaylists: boolean;
   coverBackground: boolean;
   onApiChange: (apiId: MusicApiId) => void;
   onBitrateChange: (bitrate: BitrateOption) => void;
@@ -30,6 +31,7 @@ type SearchBarProps = {
   onSourceChange: (source: MusicSource) => void;
   onTogglePlaybackHistory: () => void;
   onToggleFavorites: () => void;
+  onTogglePlaylists: () => void;
 };
 
 export function SearchBar({
@@ -44,6 +46,7 @@ export function SearchBar({
   selectedSource,
   showingPlaybackHistory,
   showingFavorites,
+  showingPlaylists,
   coverBackground,
   onApiChange,
   onBitrateChange,
@@ -52,6 +55,7 @@ export function SearchBar({
   onSourceChange,
   onTogglePlaybackHistory,
   onToggleFavorites,
+  onTogglePlaylists,
 }: SearchBarProps) {
   // 移动端筛选区默认收起，桌面端始终展开
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -109,6 +113,18 @@ export function SearchBar({
         >
           收藏列表
         </button>
+        <button
+          type="button"
+          onClick={onTogglePlaylists}
+          className={clsx(
+            "px-3 py-1 rounded-lg border text-sm transition-colors",
+            showingPlaylists
+              ? "border-sky-500 bg-sky-500 text-white"
+              : `border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300 ${controlHover}`,
+          )}
+        >
+          歌单
+        </button>
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium text-slate-600 dark:text-slate-300">音源</span>
           <div className={`flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600 ${controlSurface}`}>
@@ -161,7 +177,7 @@ export function SearchBar({
             }
           }}
           placeholder="搜索歌曲/歌手/专辑"
-          className={`flex-1 px-3 py-1.5 md:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 text-slate-800 placeholder-slate-500 dark:border-slate-600 dark:text-slate-200 dark:placeholder-slate-400 ${controlSurface}`}
+          className={`flex-1 min-w-0 px-3 py-1.5 md:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-400 text-slate-800 placeholder-slate-500 dark:border-slate-600 dark:text-slate-200 dark:placeholder-slate-400 ${controlSurface}`}
         />
         <button
           type="button"

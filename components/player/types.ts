@@ -1,7 +1,23 @@
 import type { MusicApiId } from "../../api";
-import type { BitrateOption, LocalTrack } from "../../data/localTracks";
+import type { BitrateOption, LocalTrack, MusicSource } from "../../data/localTracks";
 
 export type { BitrateOption };
+
+// A user-added playlist (e.g. a NetEase playlist) saved in local storage.
+export type SavedPlaylist = {
+  id: string;
+  apiId: MusicApiId;
+  source: MusicSource;
+  playlistId: string;
+  name: string;
+  cover?: string | null;
+  description?: string;
+  trackCount?: number;
+  playCount?: number;
+  creatorName?: string;
+  tracks?: LocalTrack[];
+  addedAt: number;
+};
 
 export type PlaybackMode = "order" | "single" | "shuffle";
 
@@ -24,6 +40,8 @@ export type Track = Omit<LocalTrack, "apiId"> & {
   lyric?: string | null;
   tLyric?: string | null;
   fileSizeKb?: number | null;
+  // When true, resolve playback via getVideoUrl (video sources) instead of getUrl.
+  useVideoUrl?: boolean;
 };
 
 // Excludes short-lived playback URLs and fetched payloads so history can be replayed safely.

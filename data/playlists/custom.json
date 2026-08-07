@@ -1,0 +1,55 @@
+{
+  "type": "custom",
+  "name": "自定义歌单",
+  "cover": null,
+  "tracks": [
+    {
+      "id": "netease-436514312",
+      "name": "成都",
+      "artist": "赵雷",
+      "album": "成都",
+      "source": "netease",
+      "keyword": "成都 赵雷",
+      "trackId": "436514312",
+      "picId": "2946691234868155",
+      "lyricId": "436514312",
+      "bitrate": 320
+    },
+    {
+      "id": "netease-65528",
+      "name": "淘汰",
+      "artist": "陈奕迅",
+      "album": "认了吧",
+      "source": "netease",
+      "keyword": "淘汰 陈奕迅",
+      "trackId": "65528",
+      "picId": "18782957139233959",
+      "lyricId": "65528",
+      "bitrate": 320
+    },
+    {
+      "id": "netease-1408431489",
+      "name": "特别的爱给特别的你",
+      "artist": "伍思凯",
+      "album": "特别的爱给特别的你",
+      "source": "netease",
+      "keyword": "特别的爱给特别的你 伍思凯",
+      "trackId": "1408431489",
+      "picId": "109951164537125069",
+      "lyricId": "1408431489",
+      "bitrate": 320
+    },
+    {
+      "id": "netease-188051",
+      "name": "让我欢喜让我忧",
+      "artist": "周华健",
+      "album": "让我欢喜让我忧",
+      "source": "netease",
+      "keyword": "让我欢喜让我忧 周华健",
+      "trackId": "188051",
+      "picId": "109951165611286331",
+      "lyricId": "188051",
+      "bitrate": 320
+    }
+  ]
+}

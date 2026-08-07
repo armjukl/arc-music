@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { GripVertical, Heart, MoreVertical, Trash2 } from "lucide-react";
-import type { FavoriteTrack, PlaybackHistoryTrack, Track } from "./types";
+import type { FavoriteTrack, PlaybackHistoryTrack, SavedPlaylist, Track } from "./types";
 
 type TrackListProps = {
   currentSongIndex: number;
@@ -13,6 +13,9 @@ type TrackListProps = {
   musicList: Track[];
   playbackHistory: PlaybackHistoryTrack[];
   favorites: FavoriteTrack[];
+  activePlaylist: SavedPlaylist | null;
+  playlistHasMore: boolean;
+  playlistLoadingMore: boolean;
   searchHasMore: boolean;
   searchPage: number;
   searchPageInput: string;
@@ -35,6 +38,8 @@ type TrackListProps = {
   onReorderFavorites: (fromIndex: number, toIndex: number) => void;
   onTogglePlaybackHistory: () => void;
   onToggleFavorites: () => void;
+  onBackToPlaylist: () => void;
+  onLoadMorePlaylist: () => void;
 };
 
 export function TrackList({
@@ -55,6 +60,9 @@ export function TrackList({
   showingPlaybackHistory,
   showingFavorites,
   coverBackground,
+  activePlaylist,
+  playlistHasMore,
+  playlistLoadingMore,
   onClearPlaybackHistory,
   onDeletePlaybackHistoryTrack,
   onPlayHistoryTrack,
@@ -69,6 +77,8 @@ export function TrackList({
   onReorderFavorites,
   onTogglePlaybackHistory,
   onToggleFavorites,
+  onBackToPlaylist,
+  onLoadMorePlaylist,
 }: TrackListProps) {
   const favoriteDragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draggedFavoriteIndexRef = useRef<number | null>(null);
@@ -158,8 +168,22 @@ export function TrackList({
   };
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pt-4 md:pt-5 pb-24 md:pb-0 px-4 md:px-6">
-      {showingPlaybackHistory ? (
+    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pt-4 md:pt-5 pb-52 md:pb-0 px-4 md:px-6">
+      {activePlaylist &&
+      !showingSearchResults &&
+      !showingPlaybackHistory &&
+      !showingFavorites ? (
+        <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600 dark:text-slate-300">
+          <span className="truncate">{activePlaylist.name}</span>
+          <button
+            type="button"
+            onClick={onBackToPlaylist}
+            className="px-3 py-1 rounded-md border border-slate-300 text-xs text-slate-600 transition-colors hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            返回歌单
+          </button>
+        </div>
+      ) : showingPlaybackHistory ? (
         <div className="flex flex-wrap items-center justify-between mb-3 pr-2 text-sm text-slate-600 dark:text-slate-300">
           <span>播放历史</span>
           <div className="flex items-center space-x-2">
@@ -394,6 +418,27 @@ export function TrackList({
           </div>
         );
       })}
+      {activePlaylist &&
+        (activePlaylist.apiId === "bilibili" ||
+          activePlaylist.apiId === "bilibili_yf") &&
+        !showingSearchResults &&
+        !showingPlaybackHistory &&
+        !showingFavorites &&
+        playlistHasMore && (
+          <div className="flex justify-center py-4">
+            <button
+              type="button"
+              onClick={onLoadMorePlaylist}
+              disabled={playlistLoadingMore}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 transition-colors hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-60"
+            >
+              {playlistLoadingMore && (
+                <div className="w-4 h-4 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin" />
+              )}
+              加载更多
+            </button>
+          </div>
+        )}
     </div>
   );
 }

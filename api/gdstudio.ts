@@ -1,10 +1,12 @@
 import {
   ApiLyricResponse,
   ApiPicResponse,
+  ApiPlaylistResponse,
   ApiResourceType,
   ApiSearchItem,
   ApiUrlResponse,
   MusicApi,
+  MusicApiPlaylistParams,
   MusicApiResourceParams,
   MusicApiSearchParams,
   MusicApiUrlParams,
@@ -55,6 +57,13 @@ export const gdstudioApi: MusicApi = {
     source: params.source,
     id: params.id,
   }),
+
+  getPlaylist: (params: MusicApiPlaylistParams): Promise<ApiPlaylistResponse> =>
+    request<ApiPlaylistResponse>({
+      types: 'playlist',
+      source: params.source,
+      id: params.id,
+    }),
 
   buildResourceUrl: (type: ApiResourceType, params: MusicApiResourceParams): string => buildUrl({
     types: type,

@@ -1,4 +1,4 @@
-export type MusicApiId = 'gdstudio' | 'bilibili';
+export type MusicApiId = 'gdstudio' | 'bilibili' | 'bilibili_yf';
 
 export type ApiResourceType = 'lyric' | 'pic';
 
@@ -19,6 +19,7 @@ export type ApiUrlResponse = {
   url?: string;
   br?: number;
   size?: number;
+  publishedAt?: string;
 };
 
 export type ApiPicResponse = {
@@ -49,12 +50,59 @@ export type MusicApiResourceParams = {
   size?: string;
 };
 
+export type ApiPlaylistTrackArtist = {
+  id?: number;
+  name?: string;
+};
+
+export type ApiPlaylistTrackAlbum = {
+  id?: number;
+  name?: string;
+  picUrl?: string;
+};
+
+export type ApiPlaylistTrack = {
+  id?: number | string;
+  name?: string;
+  ar?: ApiPlaylistTrackArtist[];
+  al?: ApiPlaylistTrackAlbum;
+  dt?: number;
+};
+
+export type ApiPlaylist = {
+  id?: number | string;
+  name?: string;
+  coverImgUrl?: string;
+  description?: string;
+  trackCount?: number;
+  playCount?: number;
+  creator?: { nickname?: string };
+  tracks?: ApiPlaylistTrack[];
+};
+
+export type ApiPlaylistResponse = {
+  code?: number;
+  playlist?: ApiPlaylist;
+  page?: number;
+  hasMore?: boolean;
+};
+
+export type MusicApiPlaylistParams = {
+  source: string;
+  id: string;
+  page?: number;
+};
+
 export interface MusicApi {
   readonly id: MusicApiId;
   readonly label: string;
   search(params: MusicApiSearchParams): Promise<ApiSearchItem[]>;
   getUrl(params: MusicApiUrlParams): Promise<ApiUrlResponse>;
+  getVideoUrl?(params: MusicApiUrlParams): Promise<ApiUrlResponse>;
   getPic(params: MusicApiResourceParams): Promise<ApiPicResponse>;
   getLyric(params: MusicApiResourceParams): Promise<ApiLyricResponse>;
+  getPlaylist?(
+    params: MusicApiPlaylistParams,
+  ): Promise<ApiPlaylistResponse | null>;
   buildResourceUrl(type: ApiResourceType, params: MusicApiResourceParams): string;
 }

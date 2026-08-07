@@ -9,8 +9,9 @@ import React, {
 } from "react";
 import { Howl } from "howler";
 import { BITRATE_OPTIONS, LOCAL_TRACKS, MusicSource } from "../data/localTracks";
+import { DEFAULT_PLAYLISTS } from "../data/playlists";
 import { DEFAULT_MUSIC_API_ID, getMusicApi, MUSIC_APIS } from "../api";
-import type { MusicApiId } from "../api";
+import type { ApiPlaylistTrack, MusicApiId } from "../api";
 import { TrackInfoModal } from "./player/TrackInfoModal";
 import { LibraryPanel } from "./player/LibraryPanel";
 import { DesktopPlayer } from "./player/DesktopPlayer";
@@ -22,11 +23,15 @@ import type {
   LyricLine,
   PlaybackHistoryTrack,
   PlaybackMode,
+  SavedPlaylist,
   Track,
 } from "./player/types";
 import {
   createTrack,
+  formatTime,
+  parseBilibiliMediaId,
   parseLyricLines,
+  parsePlaylistId,
   sanitizeUrl,
   selectBestSearchResult,
 } from "./player/utils";
@@ -47,11 +52,13 @@ const BILIBILI_SOURCES: { value: MusicSource; label: string }[] = [
 const DEFAULT_SOURCE: MusicSource = "netease";
 const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
 const FAVORITES_STORAGE_KEY = "arc-music-favorites";
+const PLAYLISTS_STORAGE_KEY = "arc-music-playlists";
 const PERFORMANCE_MODE_STORAGE_KEY = "arc-music-performance-mode";
 const THEME_MODE_STORAGE_KEY = "arc-music-theme-mode";
 const COVER_BACKGROUND_STORAGE_KEY = "arc-music-cover-background";
 const MAX_PLAYBACK_HISTORY = 50;
 const MAX_FAVORITES = 50;
+const MAX_PLAYLISTS = 30;
 type PerformanceMode = "normal" | "low";
 type ThemeMode = "light" | "dark" | "system";
 const INITIAL_TRACKS: Track[] = LOCAL_TRACKS.map((track) =>
@@ -62,8 +69,82 @@ const INITIAL_SOURCE_TRACKS: Track[] = INITIAL_TRACKS.filter(
     track.apiId === DEFAULT_MUSIC_API_ID && track.source === DEFAULT_SOURCE,
 );
 
-const toPlaybackHistoryTrack = (track: Track): PlaybackHistoryTrack => ({
-  id: track.id,
+// Minimal interface shared by Howl (audio element) and the video controller so
+// the rest of the player can drive either one uniformly.
+type MediaController = {
+  play(): void;
+  pause(): void;
+  seek(time?: number): number;
+  duration(): number;
+  volume(value: number): void;
+  playing(): boolean;
+  unload(): void;
+};
+
+// Plays a video MP4 (e.g. Bilibili video parse) through a hidden <video>
+// element, because an <audio> element cannot decode video files.
+function createVideoController(
+  src: string,
+  initialVolume: number,
+  handlers: {
+    onplay: () => void;
+    onpause: () => void;
+    onended: () => void;
+    onload: () => void;
+  },
+): MediaController {
+  const video = document.createElement("video");
+  video.src = src;
+  video.preload = "auto";
+  video.volume = initialVolume;
+  video.playsInline = true;
+  video.style.position = "fixed";
+  video.style.opacity = "0";
+  video.style.width = "1px";
+  video.style.height = "1px";
+  video.style.pointerEvents = "none";
+  document.body.appendChild(video);
+  video.addEventListener("play", handlers.onplay);
+  video.addEventListener("pause", handlers.onpause);
+  video.addEventListener("ended", handlers.onended);
+  video.addEventListener("loadedmetadata", handlers.onload);
+  video.addEventListener("durationchange", handlers.onload);
+  return {
+    play() {
+      const promise = video.play();
+      if (promise && typeof promise.catch === "function") {
+        promise.catch(() => {
+          // Ignore autoplay policy rejections; the user can press play again.
+        });
+      }
+    },
+    pause() {
+      video.pause();
+    },
+    seek(time?: number) {
+      if (typeof time === "number") video.currentTime = time;
+      return video.currentTime;
+    },
+    duration() {
+      const value = video.duration;
+      return Number.isFinite(value) ? value : 0;
+    },
+    volume(value: number) {
+      video.volume = value;
+    },
+    playing() {
+      return !video.paused && !video.ended;
+    },
+    unload() {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      video.remove();
+    },
+  };
+}
+
+const toPlaybackHistoryTrack = (track: Track): PlaybackHistoryTrack => ({  id: track.id,
   name: track.name,
   artist: track.artist,
   album: track.album,
@@ -80,6 +161,43 @@ const toPlaybackHistoryTrack = (track: Track): PlaybackHistoryTrack => ({
 });
 
 const toFavoriteTrack = (track: Track): FavoriteTrack => toPlaybackHistoryTrack(track);
+
+const toPlaylistTrack = (
+  track: ApiPlaylistTrack,
+  bitrate: BitrateOption,
+  apiId: MusicApiId,
+  source: MusicSource,
+): Track => {
+  const artist = (track.ar ?? [])
+    .map((item) => item.name)
+    .filter(Boolean)
+    .join(", ");
+  const duration =
+    typeof track.dt === "number" && track.dt > 0
+      ? formatTime(track.dt / 1000)
+      : "";
+  const rawId = track.id !== undefined ? String(track.id) : undefined;
+  return {
+    id: `${apiId}-${source}-${rawId ?? "unknown"}`,
+    name: track.name ?? "",
+    artist,
+    album: track.al?.name ?? "",
+    duration,
+    apiId,
+    source,
+    keyword: `${track.name ?? ""} ${artist}`.trim(),
+    trackId: rawId,
+    picId: track.al?.id !== undefined ? String(track.al.id) : undefined,
+    lyricId: rawId,
+    bitrate,
+    url: undefined,
+    cover: track.al?.picUrl ?? null,
+    lyric: null,
+    tLyric: null,
+    fileSizeKb: null,
+    useVideoUrl: apiId === "bilibili" || apiId === "bilibili_yf",
+  };
+};
 
 const MusicPlayer = () => {
   // 播放器状态
@@ -133,6 +251,14 @@ const MusicPlayer = () => {
   const [showingPlaybackHistory, setShowingPlaybackHistory] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteTrack[]>([]);
   const [showingFavorites, setShowingFavorites] = useState(false);
+  const [playlists, setPlaylists] = useState<SavedPlaylist[]>([]);
+  const [showingPlaylists, setShowingPlaylists] = useState(false);
+  const [activePlaylist, setActivePlaylist] = useState<SavedPlaylist | null>(null);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [playlistError, setPlaylistError] = useState<string | null>(null);
+  const [playlistPage, setPlaylistPage] = useState(1);
+  const [playlistHasMore, setPlaylistHasMore] = useState(false);
+  const [playlistLoadingMore, setPlaylistLoadingMore] = useState(false);
   const [pendingHistoryIndex, setPendingHistoryIndex] = useState<number | null>(null);
   const [performanceMode, setPerformanceMode] =
     useState<PerformanceMode>("normal");
@@ -140,7 +266,7 @@ const MusicPlayer = () => {
   const [systemPrefersDark, setSystemPrefersDark] = useState(false);
   const [coverBackground, setCoverBackground] = useState(false);
 
-  const soundRef = useRef<Howl | null>(null);
+  const soundRef = useRef<MediaController | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoPlayRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("order");
@@ -149,6 +275,7 @@ const MusicPlayer = () => {
   const lyricDesktopRef = useRef<HTMLDivElement | null>(null);
   const lyricMobileRef = useRef<HTMLDivElement | null>(null);
   const infoRequestIdRef = useRef(0);
+  const playlistRequestIdRef = useRef(0);
 
   const currentSong =
     currentSongIndex >= 0 ? musicList[currentSongIndex] : undefined;
@@ -204,6 +331,37 @@ const MusicPlayer = () => {
       }
     } catch {
       window.localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PLAYLISTS_STORAGE_KEY);
+      let parsed: SavedPlaylist[] = [];
+      if (stored) {
+        const value: unknown = JSON.parse(stored);
+        if (Array.isArray(value)) {
+          parsed = value.filter(
+            (item): item is SavedPlaylist =>
+              typeof item === "object" &&
+              item !== null &&
+              typeof (item as SavedPlaylist).id === "string" &&
+              typeof (item as SavedPlaylist).name === "string" &&
+              typeof (item as SavedPlaylist).playlistId === "string",
+          );
+        }
+      }
+
+      // Built-in playlists are always loaded first; stored ones are appended.
+      const merged = [
+        ...DEFAULT_PLAYLISTS,
+        ...parsed.filter(
+          (item) => !DEFAULT_PLAYLISTS.some((builtin) => builtin.id === item.id),
+        ),
+      ].slice(0, MAX_PLAYLISTS);
+      setPlaylists(merged);
+    } catch {
+      setPlaylists(DEFAULT_PLAYLISTS);
     }
   }, []);
 
@@ -559,7 +717,11 @@ const MusicPlayer = () => {
         }
       }
 
-      const urlData = await api.getUrl({
+      const resolveUrl = track.useVideoUrl ? api.getVideoUrl : api.getUrl;
+      if (!resolveUrl) {
+        throw new Error("当前音乐源不支持该播放方式");
+      }
+      const urlData = await resolveUrl({
         source: track.source,
         id: trackId,
         bitrate: desiredBitrate,
@@ -624,7 +786,7 @@ const MusicPlayer = () => {
         picId,
         lyricId,
         cover,
-        publishedAt,
+        publishedAt: urlData.publishedAt ?? publishedAt,
         name: resolvedName,
         album: resolvedAlbum,
         artist: resolvedArtist,
@@ -751,6 +913,7 @@ const MusicPlayer = () => {
       setSelectedBitrate(bitrate);
       setMusicList(tracks);
       setCurrentSongIndex(-1);
+      setActivePlaylist(null);
       setPendingHistoryIndex(index);
     },
     [playbackHistory, selectedBitrate],
@@ -775,6 +938,7 @@ const MusicPlayer = () => {
       setSelectedBitrate(bitrate);
       setMusicList(tracks);
       setCurrentSongIndex(-1);
+      setActivePlaylist(null);
       setPendingHistoryIndex(index);
     },
     [favorites, selectedBitrate],
@@ -832,6 +996,250 @@ const MusicPlayer = () => {
       // Ignore privacy-mode failures; the in-memory history is still cleared.
     }
   }, []);
+
+  const handleTogglePlaylists = useCallback(() => {
+    setShowingPlaylists((showing) => !showing);
+    setShowingPlaybackHistory(false);
+    setShowingFavorites(false);
+  }, []);
+
+  const handleAddPlaylist = useCallback(
+    async (type: "netease" | "bilibili", input: string): Promise<boolean> => {
+      const isBilibili = type === "bilibili";
+      const playlistId = isBilibili
+        ? parseBilibiliMediaId(input)
+        : parsePlaylistId(input);
+      if (!playlistId) {
+        setPlaylistError(
+          isBilibili
+            ? "请输入有效的Bilibili收藏夹链接或media_id"
+            : "请输入有效的网易云歌单链接或ID",
+        );
+        return false;
+      }
+      const requestId = ++playlistRequestIdRef.current;
+      setPlaylistLoading(true);
+      setPlaylistError(null);
+      try {
+        const api = getMusicApi(isBilibili ? "bilibili_yf" : "gdstudio");
+        if (!api.getPlaylist) {
+          throw new Error("当前音乐源不支持歌单");
+        }
+        const data = await api.getPlaylist({
+          source: isBilibili ? "bilibili" : "netease",
+          id: playlistId,
+        });
+        if (playlistRequestIdRef.current !== requestId) {
+          return false;
+        }
+        const playlist = data?.playlist;
+        if (!playlist || (playlist.tracks?.length ?? 0) === 0) {
+          setPlaylistError("未找到该歌单或收藏夹，请检查链接或ID");
+          return false;
+        }
+        const saved: SavedPlaylist = {
+          id: `${isBilibili ? "bilibili_yf" : "gdstudio"}-${isBilibili ? "bilibili" : "netease"}-${playlistId}`,
+          apiId: isBilibili ? "bilibili_yf" : "gdstudio",
+          source: isBilibili ? "bilibili" : "netease",
+          playlistId,
+          name: playlist.name ?? (isBilibili ? "Bilibili 收藏夹" : "网易云歌单"),
+          cover: playlist.coverImgUrl ?? playlist.tracks?.[0]?.al?.picUrl ?? null,
+          description: playlist.description ?? undefined,
+          trackCount: playlist.trackCount ?? playlist.tracks?.length,
+          playCount: playlist.playCount,
+          creatorName: playlist.creator?.nickname ?? undefined,
+          addedAt: Date.now(),
+        };
+        setPlaylists((previous) => {
+          const exists = previous.some((item) => item.id === saved.id);
+          const next = exists
+            ? previous.map((item) => (item.id === saved.id ? saved : item))
+            : [saved, ...previous].slice(0, MAX_PLAYLISTS);
+          try {
+            window.localStorage.setItem(PLAYLISTS_STORAGE_KEY, JSON.stringify(next));
+          } catch {
+            // Keep the in-memory list usable if storage is unavailable.
+          }
+          return next;
+        });
+        setShowingPlaylists(true);
+        return true;
+      } catch (err) {
+        if (playlistRequestIdRef.current === requestId) {
+          setPlaylistError(
+            err instanceof Error ? err.message : "添加歌单失败，请稍后重试",
+          );
+        }
+        return false;
+      } finally {
+        if (playlistRequestIdRef.current === requestId) {
+          setPlaylistLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  const handleDeletePlaylist = useCallback((playlist: SavedPlaylist) => {
+    setPlaylists((previous) => {
+      const next = previous.filter((item) => item.id !== playlist.id);
+      try {
+        window.localStorage.setItem(PLAYLISTS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the in-memory list usable if storage is unavailable.
+      }
+      return next;
+    });
+  }, []);
+
+  const handleOpenPlaylist = useCallback(
+    async (playlist: SavedPlaylist) => {
+      const requestId = ++playlistRequestIdRef.current;
+      setPlaylistLoading(true);
+      setPlaylistError(null);
+      try {
+        let tracks: Track[];
+        if (playlist.tracks && playlist.tracks.length > 0) {
+          // Custom playlist with embedded songs, no API call needed.
+          tracks = playlist.tracks.map((track) =>
+            createTrack(track, playlist.apiId),
+          );
+        } else {
+          const api = getMusicApi(playlist.apiId);
+          if (!api.getPlaylist) {
+            throw new Error("当前音乐源不支持歌单");
+          }
+          const data = await api.getPlaylist({
+            source: playlist.source,
+            id: playlist.playlistId,
+            page:
+              playlist.apiId === "bilibili" || playlist.apiId === "bilibili_yf"
+                ? 1
+                : undefined,
+          });
+          if (playlistRequestIdRef.current !== requestId) {
+            return;
+          }
+          const rawTracks = data?.playlist?.tracks ?? [];
+          if (rawTracks.length === 0) {
+            setPlaylistError("歌单中没有可播放的歌曲");
+            return;
+          }
+          tracks = rawTracks.map((track) =>
+            toPlaylistTrack(track, selectedBitrate, playlist.apiId, playlist.source),
+          );
+          if (
+            playlist.apiId === "bilibili" ||
+            playlist.apiId === "bilibili_yf"
+          ) {
+            setPlaylistPage(data?.page ?? 1);
+            setPlaylistHasMore(!!data?.hasMore);
+          }
+        }
+        setActivePlaylist(playlist);
+        setSelectedApiId(playlist.apiId);
+        setSelectedSource(playlist.source);
+        setSelectedBitrate(selectedBitrate);
+        // Keep the currently playing song intact (same pattern as search/source
+        // switches) so opening a playlist does not interrupt playback.
+        const activeTrack =
+          soundRef.current && currentSongIndex >= 0
+            ? musicList[currentSongIndex]
+            : null;
+        if (activeTrack) {
+          const existingIndex = tracks.findIndex(
+            (item) => item.id === activeTrack.id,
+          );
+          const nextList = [...tracks];
+          const nextIndex = existingIndex >= 0 ? existingIndex : 0;
+          if (existingIndex >= 0) {
+            nextList[existingIndex] = { ...nextList[existingIndex], ...activeTrack };
+          } else {
+            nextList.unshift(activeTrack);
+          }
+          setMusicList(nextList);
+          setCurrentSongIndex(nextIndex);
+        } else {
+          setMusicList(tracks);
+          setCurrentSongIndex(-1);
+        }
+        setShowingSearchResults(false);
+        setShowingPlaybackHistory(false);
+        setShowingFavorites(false);
+        setShowingPlaylists(false);
+      } catch (err) {
+        if (playlistRequestIdRef.current === requestId) {
+          setPlaylistError(
+            err instanceof Error ? err.message : "加载歌单失败，请稍后重试",
+          );
+        }
+      } finally {
+        if (playlistRequestIdRef.current === requestId) {
+          setPlaylistLoading(false);
+        }
+      }
+    },
+    [currentSongIndex, musicList, selectedBitrate],
+  );
+
+  const handleBackToPlaylist = useCallback(() => {
+    setShowingPlaylists(true);
+    setShowingSearchResults(false);
+    setShowingPlaybackHistory(false);
+    setShowingFavorites(false);
+  }, []);
+
+  const handleLoadMorePlaylist = useCallback(async () => {
+    if (
+      !activePlaylist ||
+      (activePlaylist.apiId !== "bilibili" && activePlaylist.apiId !== "bilibili_yf")
+    ) {
+      return;
+    }
+    if (playlistLoadingMore || !playlistHasMore) return;
+    setPlaylistLoadingMore(true);
+    setPlaylistError(null);
+    try {
+      const api = getMusicApi(activePlaylist.apiId);
+      if (!api.getPlaylist) {
+        setPlaylistError("当前音乐源不支持歌单");
+        return;
+      }
+      const nextPage = playlistPage + 1;
+      const data = await api.getPlaylist({
+        source: activePlaylist.source,
+        id: activePlaylist.playlistId,
+        page: nextPage,
+      });
+      const newTracks = (data?.playlist?.tracks ?? []).map((track) =>
+        toPlaylistTrack(
+          track,
+          selectedBitrate,
+          activePlaylist.apiId,
+          activePlaylist.source,
+        ),
+      );
+      if (newTracks.length === 0) {
+        setPlaylistHasMore(false);
+        return;
+      }
+      setMusicList((previous) => [...previous, ...newTracks]);
+      setPlaylistPage(nextPage);
+      setPlaylistHasMore(!!data?.hasMore);
+    } catch (err) {
+      setPlaylistError(
+        err instanceof Error ? err.message : "加载更多歌曲失败，请稍后重试",
+      );
+    } finally {
+      setPlaylistLoadingMore(false);
+    }
+  }, [
+    activePlaylist,
+    playlistLoadingMore,
+    playlistHasMore,
+    playlistPage,
+    selectedBitrate,
+  ]);
 
   const handleDeletePlaybackHistoryTrack = useCallback(
     (track: PlaybackHistoryTrack) => {
@@ -931,38 +1339,54 @@ const MusicPlayer = () => {
       soundRef.current = null;
     }
 
-    const howl = new Howl({
-      src: [currentSong.url],
-      html5: true,
-      volume: volume,
-      onplay: () => {
-        setIsPlaying(true);
-        startProgressTimer();
-      },
-      onpause: () => {
-        setIsPlaying(false);
-        stopProgressTimer();
-      },
-      onend: () => {
-        if (playbackModeRef.current === "single") {
-          try {
-            howl.seek(0);
-            howl.play();
-          } catch {}
-          return;
-        }
-        playNext();
-      },
-      onload: () => {
-        setDuration(howl.duration());
-      },
-    });
+    let controller: MediaController;
+    const onEnded = () => {
+      if (playbackModeRef.current === "single") {
+        try {
+          controller.seek(0);
+          controller.play();
+        } catch {}
+        return;
+      }
+      playNext();
+    };
+    const onPlay = () => {
+      setIsPlaying(true);
+      startProgressTimer();
+    };
+    const onPause = () => {
+      setIsPlaying(false);
+      stopProgressTimer();
+    };
+    const onLoad = () => {
+      setDuration(controller.duration());
+    };
 
-    soundRef.current = howl;
+    if (currentSong.useVideoUrl) {
+      // Video MP4 sources must be played through a <video> element.
+      controller = createVideoController(currentSong.url, volume, {
+        onplay: onPlay,
+        onpause: onPause,
+        onended: onEnded,
+        onload: onLoad,
+      });
+    } else {
+      controller = new Howl({
+        src: [currentSong.url],
+        html5: true,
+        volume: volume,
+        onplay: onPlay,
+        onpause: onPause,
+        onend: onEnded,
+        onload: onLoad,
+      });
+    }
+
+    soundRef.current = controller;
 
     if (autoPlayRef.current) {
       try {
-        howl.play();
+        controller.play();
       } catch {
         // ignore
       } finally {
@@ -1087,6 +1511,7 @@ const MusicPlayer = () => {
             lyric: null,
             tLyric: null,
             fileSizeKb: null,
+            useVideoUrl: apiId === "bilibili_yf",
           };
           return mappedTrack;
         });
@@ -1116,6 +1541,7 @@ const MusicPlayer = () => {
         }
 
         setMusicList(nextList);
+        setActivePlaylist(null);
         if (nextIndex !== null) {
           setCurrentSongIndex(nextIndex);
         }
@@ -1177,12 +1603,15 @@ const MusicPlayer = () => {
           nextList.unshift(activeTrack);
         }
         setMusicList(nextList);
+        setActivePlaylist(null);
         setCurrentSongIndex(nextIndex);
       } else {
         setMusicList(filtered);
+        setActivePlaylist(null);
         resetPlayer();
       }
       setShowingSearchResults(false);
+      setShowingPlaylists(false);
       setShowTranslation(false);
       setErrorMessage(null);
       setSearchPage(1);
@@ -1193,8 +1622,7 @@ const MusicPlayer = () => {
     }
 
     setSearchPageInput("1");
-    await performSearch(selectedApiId, selectedSource, keyword, 1);
-  }, [
+    await performSearch(selectedApiId, selectedSource, keyword, 1);  }, [
     localTracks,
     currentSongIndex,
     musicList,
@@ -1312,7 +1740,7 @@ const MusicPlayer = () => {
       if (apiId === selectedApiId) return;
 
       const nextSource: MusicSource =
-        apiId === "bilibili"
+        apiId === "bilibili" || apiId === "bilibili_yf"
           ? "bilibili"
           : selectedSource === "bilibili"
             ? "netease"
@@ -1344,12 +1772,15 @@ const MusicPlayer = () => {
             nextList.unshift(activeTrack);
           }
           setMusicList(nextList);
+          setActivePlaylist(null);
           setCurrentSongIndex(nextIndex);
         } else {
           setMusicList(filtered);
+          setActivePlaylist(null);
           resetPlayer();
         }
         setShowingSearchResults(false);
+        setShowingPlaylists(false);
         setShowTranslation(false);
         setErrorMessage(null);
         setSearchPage(1);
@@ -1400,12 +1831,15 @@ const MusicPlayer = () => {
             nextList.unshift(activeTrack);
           }
           setMusicList(nextList);
+          setActivePlaylist(null);
           setCurrentSongIndex(nextIndex);
         } else {
           setMusicList(filtered);
+          setActivePlaylist(null);
           resetPlayer();
         }
         setShowingSearchResults(false);
+        setShowingPlaylists(false);
         setShowTranslation(false);
         setErrorMessage(null);
         setSearchPage(1);
@@ -1617,7 +2051,9 @@ const MusicPlayer = () => {
         {/* 左侧/下方：歌曲列表 */}
         <LibraryPanel
           availableSources={
-            selectedApiId === "bilibili" ? BILIBILI_SOURCES : GDSTUDIO_SOURCES
+            selectedApiId === "bilibili" || selectedApiId === "bilibili_yf"
+              ? BILIBILI_SOURCES
+              : GDSTUDIO_SOURCES
           }
           bitrateOptions={BITRATE_OPTIONS}
           currentSongIndex={currentSongIndex}
@@ -1630,6 +2066,13 @@ const MusicPlayer = () => {
           musicList={musicList}
           playbackHistory={playbackHistory}
           favorites={favorites}
+          playlists={playlists}
+          activePlaylist={activePlaylist}
+          playlistError={playlistError}
+          playlistLoading={playlistLoading}
+          playlistHasMore={playlistHasMore}
+          playlistLoadingMore={playlistLoadingMore}
+          showingPlaylists={showingPlaylists}
           searchHasMore={searchHasMore}
           searchPage={searchPage}
           searchPageInput={searchPageInput}
@@ -1670,13 +2113,25 @@ const MusicPlayer = () => {
           themeMode={themeMode}
           onToggleFavorite={handleToggleFavorite}
           onReorderFavorites={handleReorderFavorites}
+          onAddPlaylist={handleAddPlaylist}
+          onDeletePlaylist={handleDeletePlaylist}
+          onOpenPlaylist={(playlist) => {
+            void handleOpenPlaylist(playlist);
+          }}
+          onBackToPlaylist={handleBackToPlaylist}
+          onLoadMorePlaylist={() => {
+            void handleLoadMorePlaylist();
+          }}
+          onTogglePlaylists={handleTogglePlaylists}
           onTogglePlaybackHistory={() => {
             setShowingPlaybackHistory((showing) => !showing);
             setShowingFavorites(false);
+            setShowingPlaylists(false);
           }}
           onToggleFavorites={() => {
             setShowingFavorites((showing) => !showing);
             setShowingPlaybackHistory(false);
+            setShowingPlaylists(false);
           }}
         />
         <DesktopPlayer

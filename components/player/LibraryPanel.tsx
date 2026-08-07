@@ -5,10 +5,12 @@ import type { MusicApiId } from "../../api";
 import type { MusicSource } from "../../data/localTracks";
 import { SearchBar } from "./SearchBar";
 import { TrackList } from "./TrackList";
+import { PlaylistPanel } from "./PlaylistPanel";
 import type {
   BitrateOption,
   FavoriteTrack,
   PlaybackHistoryTrack,
+  SavedPlaylist,
   Track,
 } from "./types";
 
@@ -30,6 +32,13 @@ type LibraryPanelProps = {
   musicList: Track[];
   playbackHistory: PlaybackHistoryTrack[];
   favorites: FavoriteTrack[];
+  playlists: SavedPlaylist[];
+  activePlaylist: SavedPlaylist | null;
+  playlistError: string | null;
+  playlistLoading: boolean;
+  playlistHasMore: boolean;
+  playlistLoadingMore: boolean;
+  showingPlaylists: boolean;
   searchHasMore: boolean;
   searchPage: number;
   searchPageInput: string;
@@ -62,6 +71,15 @@ type LibraryPanelProps = {
   onPerformanceModeChange: (mode: "normal" | "low") => void;
   onThemeModeChange: (mode: "light" | "dark" | "system") => void;
   onCoverBackgroundChange: (enabled: boolean) => void;
+  onAddPlaylist: (
+    type: "netease" | "bilibili",
+    input: string,
+  ) => Promise<boolean>;
+  onDeletePlaylist: (playlist: SavedPlaylist) => void;
+  onOpenPlaylist: (playlist: SavedPlaylist) => void;
+  onBackToPlaylist: () => void;
+  onLoadMorePlaylist: () => void;
+  onTogglePlaylists: () => void;
   onToggleFavorite: (track: Track) => void;
   onReorderFavorites: (fromIndex: number, toIndex: number) => void;
   onTogglePlaybackHistory: () => void;
@@ -81,6 +99,13 @@ export function LibraryPanel({
   musicList,
   playbackHistory,
   favorites,
+  playlists,
+  activePlaylist,
+  playlistError,
+  playlistLoading,
+  playlistHasMore,
+  playlistLoadingMore,
+  showingPlaylists,
   searchHasMore,
   searchPage,
   searchPageInput,
@@ -113,6 +138,12 @@ export function LibraryPanel({
   onPerformanceModeChange,
   onThemeModeChange,
   onCoverBackgroundChange,
+  onAddPlaylist,
+  onDeletePlaylist,
+  onOpenPlaylist,
+  onBackToPlaylist,
+  onLoadMorePlaylist,
+  onTogglePlaylists,
   onToggleFavorite,
   onReorderFavorites,
   onTogglePlaybackHistory,
@@ -300,6 +331,7 @@ export function LibraryPanel({
         selectedSource={selectedSource}
         showingPlaybackHistory={showingPlaybackHistory}
         showingFavorites={showingFavorites}
+        showingPlaylists={showingPlaylists}
         coverBackground={coverBackground}
         onApiChange={onApiChange}
         onBitrateChange={onBitrateChange}
@@ -308,9 +340,21 @@ export function LibraryPanel({
         onSourceChange={onSourceChange}
         onTogglePlaybackHistory={onTogglePlaybackHistory}
         onToggleFavorites={onToggleFavorites}
+        onTogglePlaylists={onTogglePlaylists}
       />
 
-      <TrackList
+      {showingPlaylists ? (
+        <PlaylistPanel
+          playlists={playlists}
+          loading={playlistLoading}
+          error={playlistError}
+          onAdd={onAddPlaylist}
+          onDelete={onDeletePlaylist}
+          onOpen={onOpenPlaylist}
+          onBack={onTogglePlaylists}
+        />
+      ) : (
+        <TrackList
         currentSongIndex={currentSongIndex}
         errorMessage={errorMessage}
         isPlaying={isPlaying}
@@ -320,6 +364,9 @@ export function LibraryPanel({
         musicList={musicList}
         playbackHistory={playbackHistory}
         favorites={favorites}
+        activePlaylist={activePlaylist}
+        playlistHasMore={playlistHasMore}
+        playlistLoadingMore={playlistLoadingMore}
         coverBackground={coverBackground}
         searchHasMore={searchHasMore}
         searchPage={searchPage}
@@ -342,7 +389,10 @@ export function LibraryPanel({
         onReorderFavorites={onReorderFavorites}
         onTogglePlaybackHistory={onTogglePlaybackHistory}
         onToggleFavorites={onToggleFavorites}
+        onBackToPlaylist={onBackToPlaylist}
+        onLoadMorePlaylist={onLoadMorePlaylist}
       />
+      )}
     </div>
   );
 }

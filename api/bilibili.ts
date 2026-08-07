@@ -1,10 +1,12 @@
 import {
   ApiLyricResponse,
   ApiPicResponse,
+  ApiPlaylistResponse,
   ApiResourceType,
   ApiSearchItem,
   ApiUrlResponse,
   MusicApi,
+  MusicApiPlaylistParams,
   MusicApiResourceParams,
   MusicApiSearchParams,
   MusicApiUrlParams,
@@ -119,9 +121,43 @@ export const bilibiliApi: MusicApi = {
     };
   },
 
+  // Bilibili favorites are videos; parse a playable video URL through the
+  // separate Bilibili video parse API instead of the audio hub.
+  getVideoUrl: async (params: MusicApiUrlParams): Promise<ApiUrlResponse> => {
+    const bvid = String(params.id ?? "").split(":")[0];
+    if (!bvid) {
+      throw new Error("无法解析Bilibili视频ID");
+    }
+    const origin =
+      typeof window === "undefined" ? "http://localhost" : window.location.origin;
+    const url = new URL("/api/bilibili/video", origin);
+    url.searchParams.set("url", `https://www.bilibili.com/video/${bvid}`);
+    const parsed = await request<{ code?: number; url?: string }>(url.toString());
+    if (!parsed.url) {
+      throw new Error("视频解析失败");
+    }
+    return { url: parsed.url, br: params.bitrate };
+  },
+
   // Bilibili search results do not expose music cover or lyric resources.
   getPic: async (): Promise<ApiPicResponse> => ({}),
   getLyric: async (): Promise<ApiLyricResponse> => ({}),
+
+  // Reads a public Bilibili favorite folder (media_id) and expands it into
+  // a playlist of playable audio tracks (BV号:cid). The folder info and items
+  // are fetched server-side from Bilibili's official API by the Next.js route.
+  getPlaylist: async (
+    params: MusicApiPlaylistParams,
+  ): Promise<ApiPlaylistResponse> => {
+    const origin =
+      typeof window === "undefined" ? "http://localhost" : window.location.origin;
+    const url = new URL("/api/bilibili/favorites", origin);
+    url.searchParams.set("media_id", params.id);
+    if (params.page) {
+      url.searchParams.set("page", String(params.page));
+    }
+    return request<ApiPlaylistResponse>(url.toString());
+  },
 
   buildResourceUrl: (_type: ApiResourceType, _params: MusicApiResourceParams): string => '',
 };

@@ -150,3 +150,26 @@ export function formatBitrateLabel(value?: number | null): string {
   };
   return labels[value] ?? `${value}K`;
 }
+
+// Accepts a raw NetEase playlist id or a NetEase playlist URL, returns the id or null.
+export function parsePlaylistId(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return value;
+  const urlMatch = /[?&#]id=(\d+)/.exec(value);
+  if (urlMatch) return urlMatch[1];
+  const pathMatch = /\/playlist\/(\d+)/.exec(value);
+  if (pathMatch) return pathMatch[1];
+  return null;
+}
+
+// Accepts a raw Bilibili favorite folder media_id or a medialist URL, returns the id or null.
+// e.g. 3660145764  or  https://www.bilibili.com/medialist/detail/ml3660145764
+export function parseBilibiliMediaId(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return value;
+  const match = /ml(\d+)/.exec(value);
+  if (match) return match[1];
+  return null;
+}

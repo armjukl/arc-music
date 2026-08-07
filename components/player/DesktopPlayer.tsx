@@ -196,7 +196,9 @@ export function DesktopPlayer({
                 </div>
               </div>
             )}
-            {(hasAnyLyric || currentSong?.publishedAt) && <div className={clsx("w-full max-w-2xl min-h-0", lyricsExpanded ? "flex-1 flex flex-col mt-2 mb-5" : "mb-5")}>
+            {(hasAnyLyric ||
+              currentSong?.publishedAt ||
+              currentSong?.apiId === "bilibili_yf") && <div className={clsx("w-full max-w-2xl min-h-0", lyricsExpanded ? "flex-1 flex flex-col mt-2 mb-5" : "mb-5")}>
               <div className={clsx("flex items-center justify-between", lyricsExpanded ? "mb-3" : "mb-2")}>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-medium tracking-[0.2em] text-slate-600 dark:text-slate-300 uppercase">歌词</span>

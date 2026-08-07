@@ -262,7 +262,9 @@ export function MobilePlayer({
         </div>
         <div className="flex-1 flex flex-col p-4">
           <div className="flex-1 w-full flex flex-col">
-            {(hasAnyLyric || currentSong?.publishedAt) ? <div className={clsx("w-full", lyricsExpanded && "flex-1 flex flex-col")}>
+            {(hasAnyLyric ||
+              currentSong?.publishedAt ||
+              currentSong?.apiId === "bilibili_yf") ? <div className={clsx("w-full", lyricsExpanded && "flex-1 flex flex-col")}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium tracking-[0.18em] text-slate-600 dark:text-slate-300 uppercase">歌词</span>
