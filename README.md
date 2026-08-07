@@ -1,13 +1,13 @@
 # 🎵 Arc-music
 
 > 现版本为使用GDstudio的api版，如需使用本地音乐版请访问https://github.com/armjukl/arc-music/tree/local
-> 可自行部署bilibili音源后端
+> 可自行部署bilibili音源后端（Music API Hub）
 > 目前GDstudio限制同一ip每5分钟50次请求
 
 * 体验网站（部署在vercel）：https://music-player-rosy-nine.vercel.app/
 
   
-一个基于 Next.js 的网页音乐播放器，支持 GDStudio 与 Bilibili Music API Hub 音源，适配桌面端和移动端。
+一个基于 Next.js 的网页音乐播放器，支持 GDStudio、Bilibili Music API Hub 与 Bilibili 视频解析音源，适配桌面端和移动端。
 * pc端:
   ![YqHqIrs5waWqgVeuq0ztcvIiM1BbPaxO](https://cdn.nodeimage.com/i/YqHqIrs5waWqgVeuq0ztcvIiM1BbPaxO.jpg)
   ![V2cmsDHniNr68yW8IUCFiaf7H0DaNyA6](https://cdn.nodeimage.com/i/V2cmsDHniNr68yW8IUCFiaf7H0DaNyA6.jpg)
@@ -23,12 +23,15 @@
 ## ✨ 特性
 - 🤓 **开箱即用** - 使用浏览器就能听歌
 - 🎨 **现代化设计** - 简洁美观的玻璃态设计风格，适配pc和手机设备
+- 🌗 **日夜主题** - 支持日间/夜间/跟随系统三种主题模式
+- 🎨 **封面毛玻璃背景** - 播放时可将歌曲封面作为模糊背景，面板变为透明毛玻璃效果
 - 🎶 **多功能播放** - 支持播放、暂停、上一曲、下一曲、进度控制、列表播放、随机播放和歌曲搜索
 - ❤️ **收藏与历史** - 收藏列表和播放历史保存在浏览器本地，可重新解析后播放
+- 📜 **歌单** - 支持网易云歌单与 Bilibili 收藏夹；内置默认歌单，播放时保留当前歌曲不中断
 - 📝 **歌词显示** - 支持原文、翻译歌词、时间戳和自动滚动
 - ⏱️ **进度条拖动** - 支持鼠标和触摸拖动跳转，拖动时可预览对应歌词，也可拖到播放按钮取消跳转
 - ⚙️ **性能模式** - 可在右上角设置中切换低性能模式，减少动画与平滑滚动
-- 📺 **Bilibili 音源** - 通过服务端代理请求 Music API Hub，播放缓存后的 MP3 链接
+- 📺 **Bilibili 音源** - 支持 Music API Hub 音频源与 Bilibili 视频解析（yuafeng）源
 
 ## 🚀 快速开始
 
@@ -89,8 +92,25 @@ backgroundImage: "url('/bg/your-image.jpg')"
 
 1. 点击任意歌曲开始播放
 2. 使用搜索框快速查找歌曲
-3. 在搜索栏中选择 API、音源和音质
+3. 在搜索栏中选择音源（网易云/酷我/JOOX/Bilibili）、接口和音质
 4. 点击歌曲右侧心形图标收藏；播放器中的红色实心心形表示当前歌曲已收藏
+
+### 歌单
+
+1. 点击搜索栏中的「歌单」按钮进入歌单列表
+2. 网格中的「添加歌单」大方块可粘贴网易云歌单链接/ID 或 Bilibili 收藏夹链接/media_id，确认后添加
+3. 点击歌单卡片即可将歌曲加载到列表（不会自动播放、不中断当前播放）；Bilibili 收藏夹支持「加载更多」分页
+4. 内置默认歌单：云音乐热歌榜、自定义歌单、Bilibili 收藏夹「爱」
+
+### 主题与封面背景
+
+点击 `Arc-music` 标题右侧的齿轮按钮：
+
+1. **主题模式**：日间 / 夜间 / 跟随系统
+2. **封面毛玻璃背景**：开启后播放时用当前封面作为模糊背景，面板透明
+3. **性能模式**：正常 / 低性能
+
+这些设置只保存在当前浏览器中，不会影响其他设备。
 
 ### 进度条操作
 
@@ -98,36 +118,33 @@ backgroundImage: "url('/bg/your-image.jpg')"
 2. 在目标位置松开即可跳转播放进度。
 3. 拖动过程中将指针或手指移到播放按钮上，按钮会变为红色 `X`；此时松开会取消本次跳转，保留原播放位置。
 
-### 性能模式
-
-点击 `Arc-music` 标题右侧的齿轮按钮：
-
-1. **正常**：保留当前的过渡、缩放和歌词平滑滚动效果。
-2. **低性能**：关闭非必要动画、过渡和歌词平滑滚动，适合性能较低的设备。
-
-该设置只保存在当前浏览器中，不会影响其他设备。
-
 
 ## 📝 功能状态
 
 - [x] 增加GDstudio api获取歌曲
 - [x] Bilibili Music API Hub 搜索与播放
+- [x] Bilibili 视频解析（yuafeng）搜索与播放
 - [x] 收藏功能
 - [x] 播放历史
-- [ ] 夜间模式
+- [x] 歌单（网易云歌单 / Bilibili 收藏夹 / 自定义）
+- [x] 夜间模式（日间/夜间/跟随系统）
+- [x] 封面毛玻璃背景
 - [ ] 莫奈取色
 
 ## 📁 主要项目结构
 
 ```
 arc-music/
-├── api/                    # 音乐 API 适配器
+├── api/                    # 音乐 API 适配器（gdstudio / bilibili / yuafeng）
 ├── components/
 │   ├── player/             # 播放器子组件
 │   └── MusicPlayer.tsx     # 主播放器
-├── data/                   # 默认歌单与音质配置
+├── data/
+│   ├── playlists/          # 默认歌单（netease-hot / custom / bilibili-favorites）
+│   └── localTracks.ts      # 本地曲目配置
 ├── pages/
 │   ├── api/music-hub/      # Bilibili Hub 同源代理
+│   ├── api/bilibili/       # 官方收藏夹与视频解析路由
 │   ├── index.tsx           # 首页
 │   └── _app.tsx            # 应用入口
 ├── public/
@@ -159,6 +176,14 @@ arc-music/
 如果这个项目对您有帮助，请给个 ⭐️ 支持！
 
 ## 📝 更新日志
+
+### v0.4.0
+- **歌单**：新增歌单列表，支持网易云歌单（链接/ID）与 Bilibili 收藏夹（media_id/链接），以及内置自定义歌单；大方块网格排布、封面懒加载；播放时打开歌单不中断当前歌曲。
+- **Bilibili 视频解析**：新增独立音源（yuafeng），搜索与播放 Bilibili 视频；收藏夹歌单分页加载「加载更多」；通过隐藏 `<video>` 元素播放 MP4。
+- **API 重新分类**：按音源（网易云/酷我/JOOX/Bilibili）分类，接口下拉随音源联动（GDStudio / Music API Hub / Bilibili 视频解析）。
+- **夜间模式**：主题模式支持日间 / 夜间 / 跟随系统，持久化到本地。
+- **封面毛玻璃背景**：播放时用当前封面作为模糊背景，面板透明；日夜模式下背景一致。
+- **其他**：Inter 字体、设置面板新增封面背景开关。
 
 ### v0.3.3
 - **Bilibili 服务配置**：移除代码中的服务地址，改用服务端环境变量 `MUSIC_API_HUB_BASE_URL`。
