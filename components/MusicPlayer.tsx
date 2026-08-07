@@ -10,7 +10,7 @@ import React, {
 import { Howl } from "howler";
 import { BITRATE_OPTIONS, LOCAL_TRACKS, MusicSource } from "../data/localTracks";
 import { DEFAULT_PLAYLISTS } from "../data/playlists";
-import { DEFAULT_MUSIC_API_ID, getMusicApi, MUSIC_APIS } from "../api";
+import { DEFAULT_MUSIC_API_ID, getMusicApi } from "../api";
 import type { ApiPlaylistTrack, MusicApiId } from "../api";
 import { TrackInfoModal } from "./player/TrackInfoModal";
 import { LibraryPanel } from "./player/LibraryPanel";
@@ -39,15 +39,21 @@ import {
 const DEFAULT_SEARCH_COUNT = 8;
 const DEFAULT_COVER_SIZE = "300";
 
-const GDSTUDIO_SOURCES: { value: MusicSource; label: string }[] = [
+// 音源分类：网易云 / 酷我 / JOOX / Bilibili
+const SOURCE_OPTIONS: { value: MusicSource; label: string }[] = [
   { value: "netease", label: "网易云" },
   { value: "kuwo", label: "酷我" },
   { value: "joox", label: "JOOX" },
-];
-
-const BILIBILI_SOURCES: { value: MusicSource; label: string }[] = [
   { value: "bilibili", label: "Bilibili" },
 ];
+
+// 每个音源可用的接口（适配器）
+const SOURCE_INTERFACES: Record<MusicSource, readonly MusicApiId[]> = {
+  netease: ["gdstudio"],
+  kuwo: ["gdstudio"],
+  joox: ["gdstudio"],
+  bilibili: ["bilibili", "bilibili_yf"],
+};
 
 const DEFAULT_SOURCE: MusicSource = "netease";
 const PLAYBACK_HISTORY_STORAGE_KEY = "arc-music-playback-history";
@@ -1739,6 +1745,8 @@ const MusicPlayer = () => {
     (apiId: MusicApiId) => {
       if (apiId === selectedApiId) return;
 
+      // The interface dropdown only lists adapters valid for the current source,
+      // but keep a safety fallback so a direct call stays consistent.
       const nextSource: MusicSource =
         apiId === "bilibili" || apiId === "bilibili_yf"
           ? "bilibili"
@@ -1805,10 +1813,17 @@ const MusicPlayer = () => {
     (source: MusicSource) => {
       if (source === selectedSource) return;
 
+      // 切换音源时，若当前接口不支持该音源则自动切到该音源可用的第一个接口
+      const available = SOURCE_INTERFACES[source];
+      const nextApiId = available.includes(selectedApiId)
+        ? selectedApiId
+        : available[0];
+
       setSelectedSource(source);
+      setSelectedApiId(nextApiId);
       if (searchTerm.trim()) {
         setSearchPageInput("1");
-        void performSearch(selectedApiId, source, searchTerm.trim(), 1);
+        void performSearch(nextApiId, source, searchTerm.trim(), 1);
       } else {
         const activeTrack =
           soundRef.current && currentSongIndex >= 0
@@ -1817,7 +1832,7 @@ const MusicPlayer = () => {
         searchRequestIdRef.current += 1;
         setIsSearching(false);
         const filtered = localTracks.filter(
-          (track) => track.apiId === selectedApiId && track.source === source,
+          (track) => track.apiId === nextApiId && track.source === source,
         );
         if (activeTrack) {
           const existingIndex = filtered.findIndex(
@@ -2050,11 +2065,11 @@ const MusicPlayer = () => {
         {/* 移动端：底部小播放器，可展开半屏；桌面端：右侧 1/3 宽 */}
         {/* 左侧/下方：歌曲列表 */}
         <LibraryPanel
-          availableSources={
-            selectedApiId === "bilibili" || selectedApiId === "bilibili_yf"
-              ? BILIBILI_SOURCES
-              : GDSTUDIO_SOURCES
-          }
+          sourceOptions={SOURCE_OPTIONS}
+          interfaceOptions={SOURCE_INTERFACES[selectedSource].map((id) => ({
+            id,
+            label: getMusicApi(id).label,
+          }))}
           bitrateOptions={BITRATE_OPTIONS}
           currentSongIndex={currentSongIndex}
           errorMessage={errorMessage}
@@ -2062,7 +2077,6 @@ const MusicPlayer = () => {
           isSearching={isSearching}
           lastSearchKeyword={lastSearchKeyword}
           loadingTrackIndex={loadingTrackIndex}
-          musicApis={MUSIC_APIS}
           musicList={musicList}
           playbackHistory={playbackHistory}
           favorites={favorites}

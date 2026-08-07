@@ -11,11 +11,11 @@ type SourceOption = {
 };
 
 type SearchBarProps = {
-  availableSources: SourceOption[];
+  sourceOptions: SourceOption[];
+  interfaceOptions: readonly { id: MusicApiId; label: string }[];
   bitrateOptions: readonly BitrateOption[];
   errorMessage: string | null;
   isSearching: boolean;
-  musicApis: readonly { id: MusicApiId; label: string }[];
   searchTerm: string;
   selectedApiId: MusicApiId;
   selectedBitrate: BitrateOption;
@@ -35,11 +35,11 @@ type SearchBarProps = {
 };
 
 export function SearchBar({
-  availableSources,
+  sourceOptions,
+  interfaceOptions,
   bitrateOptions,
   errorMessage,
   isSearching,
-  musicApis,
   searchTerm,
   selectedApiId,
   selectedBitrate,
@@ -71,24 +71,49 @@ export function SearchBar({
     <div className="p-4 md:px-8 md:py-5 border-b border-slate-200/60 dark:border-slate-700/60 shrink-0">
       <div
         className={clsx(
-          "flex-wrap items-center gap-3 mb-3",
+          "flex-col gap-3 mb-3",
           filtersExpanded ? "flex" : "hidden md:flex",
         )}
       >
-        <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">API</span>
-          <select
-            value={selectedApiId}
-            onChange={(e) => onApiChange(e.target.value as MusicApiId)}
-            className={`px-3 py-1 rounded-lg border border-slate-300 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:text-slate-200 ${controlSurface}`}
-          >
-            {musicApis.map((api) => (
-              <option key={api.id} value={api.id}>
-                {api.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">音源</span>
+            <div className={`flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600 ${controlSurface}`}>
+              {sourceOptions.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onSourceChange(value)}
+                  className={clsx(
+                    "px-3 py-1 text-sm transition-colors",
+                    selectedSource === value
+                      ? "bg-sky-500 text-white"
+                      : coverBackground
+                        ? "text-slate-600 hover:text-white dark:text-slate-300"
+                        : "text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-slate-700/60",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">接口</span>
+            <select
+              value={selectedApiId}
+              onChange={(e) => onApiChange(e.target.value as MusicApiId)}
+              className={`px-3 py-1 rounded-lg border border-slate-300 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:text-slate-200 ${controlSurface}`}
+            >
+              {interfaceOptions.map((api) => (
+                <option key={api.id} value={api.id}>
+                  {api.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={onTogglePlaybackHistory}
@@ -126,28 +151,6 @@ export function SearchBar({
           歌单
         </button>
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">音源</span>
-          <div className={`flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600 ${controlSurface}`}>
-            {availableSources.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onSourceChange(value)}
-                className={clsx(
-                  "px-3 py-1 text-sm transition-colors",
-                  selectedSource === value
-                    ? "bg-sky-500 text-white"
-                    : coverBackground
-                      ? "text-slate-600 hover:text-white dark:text-slate-300"
-                      : "text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-slate-700/60",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
           <span className="text-sm font-medium text-slate-600 dark:text-slate-300">音质</span>
           <select
             value={selectedBitrate}
@@ -163,6 +166,7 @@ export function SearchBar({
               >{`${option} kbps${option >= 740 ? " (无损)" : ""}`}</option>
             ))}
           </select>
+        </div>
         </div>
       </div>
       <div className="flex space-x-2">

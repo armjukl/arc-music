@@ -20,7 +20,8 @@ type SourceOption = {
 };
 
 type LibraryPanelProps = {
-  availableSources: SourceOption[];
+  sourceOptions: SourceOption[];
+  interfaceOptions: readonly { id: MusicApiId; label: string }[];
   bitrateOptions: readonly BitrateOption[];
   currentSongIndex: number;
   errorMessage: string | null;
@@ -28,7 +29,6 @@ type LibraryPanelProps = {
   isSearching: boolean;
   lastSearchKeyword: string | null;
   loadingTrackIndex: number | null;
-  musicApis: readonly { id: MusicApiId; label: string }[];
   musicList: Track[];
   playbackHistory: PlaybackHistoryTrack[];
   favorites: FavoriteTrack[];
@@ -87,7 +87,8 @@ type LibraryPanelProps = {
 };
 
 export function LibraryPanel({
-  availableSources,
+  sourceOptions,
+  interfaceOptions,
   bitrateOptions,
   currentSongIndex,
   errorMessage,
@@ -95,7 +96,6 @@ export function LibraryPanel({
   isSearching,
   lastSearchKeyword,
   loadingTrackIndex,
-  musicApis,
   musicList,
   playbackHistory,
   favorites,
@@ -319,12 +319,12 @@ export function LibraryPanel({
         )}
       </div>
 
-      <SearchBar
-        availableSources={availableSources}
-        bitrateOptions={bitrateOptions}
+        <SearchBar
+          sourceOptions={sourceOptions}
+          interfaceOptions={interfaceOptions}
+          bitrateOptions={bitrateOptions}
         errorMessage={errorMessage}
         isSearching={isSearching}
-        musicApis={musicApis}
         searchTerm={searchTerm}
         selectedApiId={selectedApiId}
         selectedBitrate={selectedBitrate}
